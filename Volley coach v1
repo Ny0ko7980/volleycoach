@@ -1,0 +1,409 @@
+index.html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VolleyCoach</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background: #f5f7fb;
+  color: #151923;
+  min-height: 100vh;
+}
+
+header {
+  background: #111827;
+  color: white;
+  padding: 22px 20px;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 30px;
+}
+
+header p {
+  margin-top: 6px;
+  color: #b8c0d0;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.07);
+}
+
+.hero {
+  background: linear-gradient(135deg,#2563eb,#7c3aed);
+  color: white;
+  border-radius: 22px;
+  padding: 25px;
+  margin-bottom: 20px;
+}
+
+.hero h2 {
+  font-size: 25px;
+  margin-bottom: 8px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 12px;
+}
+
+.stat {
+  background: #f1f5f9;
+  border-radius: 14px;
+  padding: 15px;
+  text-align: center;
+}
+
+.stat strong {
+  display: block;
+  font-size: 25px;
+  color: #2563eb;
+}
+
+button {
+  border: none;
+  background: #2563eb;
+  color: white;
+  padding: 13px 18px;
+  border-radius: 12px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+button:hover {
+  opacity: .9;
+}
+
+.exercise {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 15px;
+  margin-top: 12px;
+}
+
+.exercise h3 {
+  margin-bottom: 7px;
+}
+
+.exercise p {
+  color: #667085;
+  line-height: 1.5;
+}
+
+nav {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  border-top: 1px solid #ddd;
+  display: flex;
+  justify-content: space-around;
+  padding: 12px;
+}
+
+nav button {
+  margin: 0;
+  background: transparent;
+  color: #374151;
+}
+
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
+}
+
+input, select {
+  width: 100%;
+  padding: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  margin-top: 7px;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+@media(max-width:600px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🏐 VolleyCoach</h1>
+  <p>Ton coach de volley dans ta poche</p>
+</header>
+
+<main class="container">
+
+  <!-- ACCUEIL -->
+  <section id="home" class="page active">
+
+    <div class="hero">
+      <h2>Bienvenue sur VolleyCoach 👋</h2>
+      <p>Améliore ta détente, ta technique et tes performances.</p>
+      <button onclick="showPage('training')">
+        Commencer l'entraînement
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>📊 Tes statistiques</h2>
+
+      <div class="stats">
+        <div class="stat">
+          <strong id="jumpStat">0 cm</strong>
+          Détente
+        </div>
+
+        <div class="stat">
+          <strong id="trainingStat">0</strong>
+          Entraînements
+        </div>
+
+        <div class="stat">
+          <strong id="scoreStat">0</strong>
+          Score
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎯 Objectif</h2>
+      <p id="goalText">
+        Configure ton objectif pour commencer.
+      </p>
+
+      <button onclick="showPage('profile')">
+        Configurer mon profil
+      </button>
+    </div>
+
+  </section>
+
+
+  <!-- ENTRAINEMENT -->
+  <section id="training" class="page">
+
+    <div class="card">
+      <h2>🏋️ Entraînement</h2>
+      <p>Programme recommandé pour progresser.</p>
+
+      <div class="exercise">
+        <h3>🔥 Échauffement</h3>
+        <p>5 à 10 minutes de mobilisation et mouvements dynamiques.</p>
+      </div>
+
+      <div class="exercise">
+        <h3>🦵 Squats</h3>
+        <p>3 séries de 10 répétitions.</p>
+      </div>
+
+      <div class="exercise">
+        <h3>⬆️ Sauts verticaux</h3>
+        <p>4 séries de 5 sauts explosifs.</p>
+      </div>
+
+      <div class="exercise">
+        <h3>🏐 Réception</h3>
+        <p>Travail de la position basse et de la plateforme.</p>
+      </div>
+
+      <div class="exercise">
+        <h3>💥 Attaque</h3>
+        <p>Travail de l'approche, de l'impulsion et du geste d'attaque.</p>
+      </div>
+
+      <button onclick="completeTraining()">
+        ✅ Entraînement terminé
+      </button>
+    </div>
+
+  </section>
+
+
+  <!-- EXERCICES -->
+  <section id="exercises" class="page">
+
+    <div class="card">
+      <h2>📚 Exercices</h2>
+
+      <div class="exercise">
+        <h3>🏃 Explosivité</h3>
+        <p>Développer la puissance nécessaire pour sauter plus haut.</p>
+      </div>
+
+      <div class="exercise">
+        <h3>🏐 Réception</h3>
+        <p>Améliorer la stabilité et la précision des réceptions.</p>
+      </div>
+
+      <div class="exercise">
+        <h3>⚡ Vitesse</h3>
+        <p>Travail des déplacements courts et changements de direction.</p>
+      </div>
+
+      <div class="exercise">
+        <h3>💪 Renforcement</h3>
+        <p>Renforcement général adapté au volley-ball.</p>
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- PROFIL -->
+  <section id="profile" class="page">
+
+    <div class="card">
+      <h2>👤 Mon profil</h2>
+
+      <label>Prénom</label>
+      <input id="nameInput" type="text" placeholder="Ton prénom">
+
+      <label>Poste</label>
+      <select id="positionInput">
+        <option>Réceptionneur-attaquant</option>
+        <option>Pointu</option>
+        <option>Central</option>
+        <option>Passeur</option>
+        <option>Libéro</option>
+      </select>
+
+      <label>Détente actuelle (cm)</label>
+      <input id="jumpInput" type="number" placeholder="Ex : 65">
+
+      <label>Objectif</label>
+      <input id="goalInput" type="text" placeholder="Ex : améliorer ma détente">
+
+      <button onclick="saveProfile()">
+        💾 Enregistrer
+      </button>
+    </div>
+
+  </section>
+
+</main>
+
+
+<nav>
+  <button onclick="showPage('home')">🏠 Accueil</button>
+  <button onclick="showPage('training')">🏋️ Training</button>
+  <button onclick="showPage('exercises')">📚 Exercices</button>
+  <button onclick="showPage('profile')">👤 Profil</button>
+</nav>
+
+
+<script>
+
+let trainings = Number(localStorage.getItem("trainings")) || 0;
+
+function showPage(page) {
+
+  document.querySelectorAll(".page").forEach(function(section) {
+    section.classList.remove("active");
+  });
+
+  document.getElementById(page).classList.add("active");
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+}
+
+
+function completeTraining() {
+
+  trainings++;
+
+  localStorage.setItem("trainings", trainings);
+
+  document.getElementById("trainingStat").textContent = trainings;
+
+  alert("🔥 Bravo ! Entraînement enregistré.");
+
+  showPage("home");
+}
+
+
+function saveProfile() {
+
+  const name = document.getElementById("nameInput").value;
+  const jump = document.getElementById("jumpInput").value;
+  const goal = document.getElementById("goalInput").value;
+
+  localStorage.setItem("name", name);
+  localStorage.setItem("jump", jump);
+  localStorage.setItem("goal", goal);
+
+  document.getElementById("jumpStat").textContent =
+    jump ? jump + " cm" : "0 cm";
+
+  document.getElementById("goalText").textContent =
+    goal || "Aucun objectif défini.";
+
+  alert("✅ Profil enregistré !");
+  showPage("home");
+}
+
+
+function loadProfile() {
+
+  const name = localStorage.getItem("name");
+  const jump = localStorage.getItem("jump");
+  const goal = localStorage.getItem("goal");
+
+  if (name) {
+    document.getElementById("nameInput").value = name;
+  }
+
+  if (jump) {
+    document.getElementById("jumpInput").value = jump;
+    document.getElementById("jumpStat").textContent = jump + " cm";
+  }
+
+  if (goal) {
+    document.getElementById("goalInput").value = goal;
+    document.getElementById("goalText").textContent = goal;
+  }
+
+  document.getElementById("trainingStat").textContent = trainings;
+}
+
+
+loadProfile();
+
+</script>
+
+</body>
+</html>
