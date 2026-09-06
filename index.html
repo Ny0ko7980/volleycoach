@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VolleyCoach</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background: #f5f7fb;
+  color: #151923;
+  min-height: 100vh;
+}
+
+header {
+  background: #111827;
+  color: white;
+  padding: 22px 20px;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 30px;
+}
+
+header p {
+  margin-top: 6px;
+  color: #b8c0d0;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+  padding-bottom: 90px;
+}
+
+.card {
+  background: white;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.07);
+}
+
+.card h2 {
+  margin-bottom: 10px;
+}
+
+.card > p.hint {
+  color: #667085;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.hero {
+  background: linear-gradient(135deg,#2563eb,#7c3aed);
+  color: white;
+  border-radius: 22px;
+  padding: 25px;
+  margin-bottom: 20px;
+}
+
+.hero h2 {
+  font-size: 25px;
+  margin-bottom: 8px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 12px;
+}
+
+.stat {
+  background: #f1f5f9;
+  border-radius: 14px;
+  padding: 15px;
+  text-align: center;
+}
+
+.stat strong {
+  display: block;
+  font-size: 25px;
+  color: #2563eb;
+}
+
+button {
+  border: none;
+  background: #2563eb;
+  color: white;
+  padding: 13px 18px;
+  border-radius: 12px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+button:hover {
+  opacity: .9;
+}
+
+button.secondary {
+  background: #e5e7eb;
+  color: #151923;
+}
+
+button.small {
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-top: 0;
+}
+
+.exercise {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 15px;
+  margin-top: 12px;
+}
+
+.exercise h3 {
+  margin-bottom: 4px;
+}
+
+.exercise .tag {
+  display: inline-block;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.exercise .sets {
+  font-weight: bold;
+  color: #2563eb;
+  margin-bottom: 6px;
+}
+
+.exercise p.desc {
+  color: #667085;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.exercise a.video {
+  display: inline-block;
+  background: #fef2f2;
+  color: #b91c1c;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: bold;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.exercise a.video:hover {
+  opacity: .85;
+}
+
+nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #ddd;
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+}
+
+nav button {
+  margin: 0;
+  background: transparent;
+  color: #374151;
+  font-size: 13px;
+  padding: 8px 6px;
+}
+
+nav button.active {
+  color: #2563eb;
+  font-weight: bold;
+}
+
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
+}
+
+input, select {
+  width: 100%;
+  padding: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  margin-top: 7px;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+label {
+  font-weight: bold;
+  font-size: 14px;
+  color: #374151;
+}
+
+.skill-row {
+  margin-bottom: 18px;
+}
+
+.skill-row .skill-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.skill-row .skill-value {
+  font-weight: bold;
+  color: #2563eb;
+}
+
+.skill-row input[type="range"] {
+  width: 100%;
+  margin: 4px 0 0 0;
+  padding: 0;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.bar-row .bar-label {
+  width: 150px;
+  font-size: 13px;
+  color: #374151;
+  flex-shrink: 0;
+}
+
+.bar-track {
+  flex: 1;
+  background: #eef1f6;
+  border-radius: 999px;
+  height: 14px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg,#2563eb,#7c3aed);
+  border-radius: 999px;
+}
+
+.bar-row .bar-num {
+  width: 26px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: bold;
+  color: #2563eb;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.check-item input {
+  width: auto;
+  margin: 0;
+}
+
+.check-item.checked {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.history-item {
+  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-item .date {
+  font-weight: bold;
+}
+
+.history-item .details {
+  color: #667085;
+  font-size: 13px;
+}
+
+.empty {
+  color: #9aa4b2;
+  text-align: center;
+  padding: 20px 0;
+}
+
+@media(max-width:600px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+  .checkbox-grid {
+    grid-template-columns: 1fr;
+  }
+  .bar-row .bar-label {
+    width: 110px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🏐 VolleyCoach</h1>
+  <p>Ton coach de volley personnalisé</p>
+</header>
+
+<main class="container">
+
+  <!-- ACCUEIL -->
+  <section id="home" class="page active">
+
+    <div class="hero">
+      <h2 id="welcomeText">Bienvenue sur VolleyCoach 👋</h2>
+      <p>Séances personnalisées selon ton niveau et ton matériel.</p>
+      <button onclick="showPage('session')">Générer ma séance</button>
+    </div>
+
+    <div class="card">
+      <h2>📊 Suivi personnel</h2>
+      <div class="stats">
+        <div class="stat">
+          <strong id="jumpStat">0 cm</strong>
+          Détente
+        </div>
+        <div class="stat">
+          <strong id="trainingStat">0</strong>
+          Séances faites
+        </div>
+        <div class="stat">
+          <strong id="weakStat">-</strong>
+          Point à travailler
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎯 Objectif</h2>
+      <p id="goalText" class="hint">Configure ton profil pour commencer.</p>
+      <button class="secondary" onclick="showPage('bilan')">📝 Faire / modifier mon bilan</button>
+    </div>
+
+  </section>
+
+
+  <!-- BILAN (profil + compétences + matériel) -->
+  <section id="bilan" class="page">
+
+    <div class="card">
+      <h2>👤 Mon profil</h2>
+
+      <label>Prénom</label>
+      <input id="nameInput" type="text" placeholder="Ton prénom">
+
+      <label>Poste</label>
+      <select id="positionInput">
+        <option>Réceptionneur-attaquant</option>
+        <option>Pointu</option>
+        <option>Central</option>
+        <option>Passeur</option>
+        <option>Libéro</option>
+      </select>
+
+      <label>Détente actuelle (cm)</label>
+      <input id="jumpInput" type="number" placeholder="Ex : 65">
+
+      <label>Objectif</label>
+      <input id="goalInput" type="text" placeholder="Ex : améliorer ma détente">
+    </div>
+
+    <div class="card">
+      <h2>⭐ Mes compétences</h2>
+      <p class="hint">Évalue-toi honnêtement de 1 (débutant) à 10 (expert) sur chaque compétence. VolleyCoach construira tes séances autour de tes points faibles.</p>
+      <div id="skillSliders"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎒 Mon matériel disponible</h2>
+      <p class="hint">Coche ce que tu as sous la main pour tes séances. Les exercices proposés s'adapteront automatiquement.</p>
+      <div class="checkbox-grid" id="equipmentGrid"></div>
+    </div>
+
+    <button onclick="saveBilan()">💾 Enregistrer mon bilan</button>
+
+  </section>
+
+
+  <!-- SEANCE -->
+  <section id="session" class="page">
+
+    <div class="card">
+      <h2>🏋️ Ma séance personnalisée</h2>
+      <p class="hint">Générée à partir de tes compétences les plus faibles et du matériel que tu as déclaré.</p>
+      <button onclick="generateSession()">🔄 Générer une nouvelle séance</button>
+    </div>
+
+    <div id="sessionContent"></div>
+
+  </section>
+
+
+  <!-- SUIVI -->
+  <section id="suivi" class="page">
+
+    <div class="card">
+      <h2>📈 Suivi de mes compétences</h2>
+      <div id="skillBars"></div>
+    </div>
+
+    <div class="card">
+      <h2>🗓️ Historique des séances</h2>
+      <div id="historyList"></div>
+    </div>
+
+  </section>
+
+</main>
+
+
+<nav>
+  <button data-page="home" onclick="showPage('home')">🏠 Accueil</button>
+  <button data-page="bilan" onclick="showPage('bilan')">📝 Bilan</button>
+  <button data-page="session" onclick="showPage('session')">🏋️ Séance</button>
+  <button data-page="suivi" onclick="showPage('suivi')">📈 Suivi</button>
+</nav>
+
+
+<script>
+
+// ---------- Données ----------
+
+const SKILLS = [
+  { key: "service",   label: "Service" },
+  { key: "reception",  label: "Réception" },
+  { key: "passe",      label: "Passe" },
+  { key: "attaque",    label: "Attaque" },
+  { key: "bloc",       label: "Bloc" },
+  { key: "defense",    label: "Défense / déplacements" },
+  { key: "detente",    label: "Détente / explosivité" },
+  { key: "endurance",  label: "Endurance / gainage" }
+];
+
+const EQUIPMENT = [
+  { key: "ballon",     label: "🏐 Ballon de volley" },
+  { key: "filet",      label: "🥅 Filet" },
+  { key: "kettlebell", label: "🏋️ Kettlebell" },
+  { key: "halteres",   label: "🏋️‍♀️ Haltères" },
+  { key: "elastique",  label: "🎗️ Élastique" },
+  { key: "corde",      label: "🪢 Corde à sauter" },
+  { key: "medecine",   label: "⚫ Ballon lesté" },
+  { key: "banc",       label: "🪑 Banc / step" },
+  { key: "cones",      label: "🚧 Plots / cônes" },
+  { key: "plyo",       label: "📦 Boîte pliométrique" }
+];
+
+const WARMUPS = [
+  { name: "Échauffement articulaire", equipment: [], sets: "5-8 min",
+    desc: "Rotations chevilles, genoux, hanches, épaules puis montées de genoux et talons-fesses.",
+    query: "échauffement volleyball rotations articulaires" },
+  { name: "Activation dynamique", equipment: [], sets: "5 min",
+    desc: "Fentes marchées, gainage dynamique et petits sauts sur place pour activer le bas du corps.",
+    query: "échauffement dynamique avant sport" }
+];
+
+const EXERCISES = [
+  // Service
+  { name: "Service flottant contre un mur", skill: "service", equipment: ["ballon"], sets: "4x8",
+    desc: "Travailler la régularité et la trajectoire flottante du service.",
+    query: "service flottant volleyball technique" },
+  { name: "Renforcement épaule à l'élastique", skill: "service", equipment: ["elastique"], sets: "3x15",
+    desc: "Rotations externe/interne d'épaule pour protéger et renforcer le geste de service.",
+    query: "exercice élastique épaule volleyball service" },
+  { name: "Service placé sur cibles", skill: "service", equipment: ["ballon", "cones"], sets: "4x6",
+    desc: "Viser des zones délimitées par des plots dans le terrain adverse.",
+    query: "service placé volleyball zones cibles" },
+
+  // Réception
+  { name: "Réception en autopasse", skill: "reception", equipment: ["ballon"], sets: "4x10",
+    desc: "Lancer le ballon soi-même et travailler la position basse et la plateforme des bras.",
+    query: "réception volleyball position plateforme bras" },
+  { name: "Réception à deux avec variations", skill: "reception", equipment: ["ballon"], sets: "5 min",
+    desc: "Un partenaire envoie des ballons variés (fort, flottant, latéral) à réceptionner.",
+    query: "exercice réception volleyball à deux" },
+  { name: "Gainage et équilibre sur banc", skill: "reception", equipment: ["banc"], sets: "3x30s",
+    desc: "Tenir la position de réception en équilibre sur un banc pour renforcer la stabilité.",
+    query: "gainage équilibre volleyball réception" },
+
+  // Passe
+  { name: "Passe haute contre un mur", skill: "passe", equipment: ["ballon"], sets: "4x15",
+    desc: "Répéter la passe à dix doigts en visant une zone précise sur un mur.",
+    query: "passe à dix doigts mur volleyball technique" },
+  { name: "Passe précision sur cibles", skill: "passe", equipment: ["ballon", "cones"], sets: "4x10",
+    desc: "Passer le ballon vers des zones matérialisées par des plots ou cerceaux au sol.",
+    query: "exercice précision passe volleyball cibles" },
+  { name: "Renforcement des poignets", skill: "passe", equipment: ["halteres"], sets: "3x12",
+    desc: "Curls de poignets légers pour renforcer la prise et la précision de passe.",
+    query: "renforcement poignets volleyball" },
+
+  // Attaque
+  { name: "Approche d'attaque à vide", skill: "attaque", equipment: [], sets: "4x6",
+    desc: "Répéter les trois appuis d'approche et l'armé de bras sans ballon pour automatiser le geste.",
+    query: "approche attaque volleyball 3 appuis technique" },
+  { name: "Attaque en autopasse", skill: "attaque", equipment: ["ballon"], sets: "4x8",
+    desc: "Autopasse courte puis attaque complète avec approche et frappe.",
+    query: "exercice attaque volleyball autopasse" },
+  { name: "Lancers lestés (medecine ball)", skill: "attaque", equipment: ["medecine"], sets: "3x8",
+    desc: "Lancers en armé de bras avec ballon lesté pour renforcer la puissance de frappe.",
+    query: "medecine ball lancer volleyball puissance frappe" },
+
+  // Bloc
+  { name: "Déplacement et saut de bloc", skill: "bloc", equipment: [], sets: "4x6 (2 côtés)",
+    desc: "Pas chassés le long du filet puis saut de bloc, bras tendus au-dessus du filet.",
+    query: "déplacement bloc volleyball pas chassés technique" },
+  { name: "Bloc réactif sur ballon", skill: "bloc", equipment: ["ballon"], sets: "4x8",
+    desc: "Un partenaire simule une attaque, le joueur ferme le bloc en réaction.",
+    query: "exercice bloc réactif volleyball" },
+  { name: "Sauts répétés sur boîte", skill: "bloc", equipment: ["plyo"], sets: "4x5",
+    desc: "Sauts verticaux répétés pour développer l'endurance de saut nécessaire au bloc.",
+    query: "pliométrie saut volleyball boîte" },
+
+  // Défense
+  { name: "Ceinture défensive (5 points)", skill: "defense", equipment: ["cones"], sets: "4x30s",
+    desc: "Déplacements rapides entre cinq plots pour travailler la couverture de terrain.",
+    query: "exercice déplacement défense volleyball plots" },
+  { name: "Plongeon et relevé", skill: "defense", equipment: [], sets: "4x6",
+    desc: "Technique de chute contrôlée puis relevé rapide après une défense au sol.",
+    query: "technique plongeon défense volleyball" },
+  { name: "Déplacements résistés à l'élastique", skill: "defense", equipment: ["elastique"], sets: "3x10",
+    desc: "Déplacements latéraux résistés pour renforcer la vitesse de départ en défense.",
+    query: "élastique résistance déplacement latéral volleyball" },
+
+  // Détente / explosivité
+  { name: "Squats au poids du corps", skill: "detente", equipment: [], sets: "4x10",
+    desc: "Travail de force des jambes, base de la détente verticale.",
+    query: "squat technique explosivité volleyball" },
+  { name: "Goblet squat au kettlebell", skill: "detente", equipment: ["kettlebell"], sets: "4x10",
+    desc: "Squat lesté avec kettlebell pour développer la force des jambes.",
+    query: "goblet squat kettlebell explosivité" },
+  { name: "Sauts verticaux explosifs", skill: "detente", equipment: [], sets: "4x5",
+    desc: "Sauts maximaux avec récupération complète entre chaque répétition.",
+    query: "exercice détente verticale volleyball sauts" },
+  { name: "Squat jump avec haltères", skill: "detente", equipment: ["halteres"], sets: "4x6",
+    desc: "Squat sauté légèrement lesté pour développer la puissance des jambes.",
+    query: "squat jump haltères puissance jambes" },
+  { name: "Corde à sauter - séries rapides", skill: "detente", equipment: ["corde"], sets: "5x30s",
+    desc: "Séries rapides pour développer la réactivité des chevilles et l'explosivité.",
+    query: "corde à sauter exercice explosivité sportif" },
+
+  // Endurance / gainage
+  { name: "Gainage planche", skill: "endurance", equipment: [], sets: "3x40s",
+    desc: "Gainage statique pour la stabilité du tronc, essentielle dans tous les gestes de volley.",
+    query: "gainage planche technique" },
+  { name: "Suitcase carry au kettlebell", skill: "endurance", equipment: ["kettlebell"], sets: "3x20m",
+    desc: "Marche chargée d'un seul côté pour renforcer le gainage latéral.",
+    query: "suitcase carry kettlebell gainage" },
+  { name: "Circuit cardio courts efforts", skill: "endurance", equipment: [], sets: "8x20s effort / 10s repos",
+    desc: "Enchaînement d'efforts courts et intenses pour reproduire l'intermittence d'un match.",
+    query: "cardio intermittent volleyball entrainement" }
+];
+
+// ---------- État / stockage ----------
+
+function loadSkills() {
+  const raw = localStorage.getItem("vc_skills");
+  const skills = raw ? JSON.parse(raw) : {};
+  SKILLS.forEach(function(s) {
+    if (typeof skills[s.key] !== "number") skills[s.key] = 5;
+  });
+  return skills;
+}
+
+function loadEquipment() {
+  const raw = localStorage.getItem("vc_equipment");
+  return raw ? JSON.parse(raw) : [];
+}
+
+function loadHistory() {
+  const raw = localStorage.getItem("vc_history");
+  return raw ? JSON.parse(raw) : [];
+}
+
+function videoUrl(query) {
+  return "https://www.youtube.com/results?search_query=" + encodeURIComponent(query + " volleyball");
+}
+
+// ---------- Navigation ----------
+
+function showPage(page) {
+  document.querySelectorAll(".page").forEach(function(section) {
+    section.classList.remove("active");
+  });
+  document.getElementById(page).classList.add("active");
+
+  document.querySelectorAll("nav button").forEach(function(btn) {
+    btn.classList.toggle("active", btn.dataset.page === page);
+  });
+
+  if (page === "suivi") renderSuivi();
+  if (page === "session" && !document.getElementById("sessionContent").dataset.rendered) {
+    generateSession();
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ---------- Rendu du bilan (compétences + matériel) ----------
+
+function renderSkillSliders() {
+  const skills = loadSkills();
+  const container = document.getElementById("skillSliders");
+  container.innerHTML = "";
+
+  SKILLS.forEach(function(s) {
+    const row = document.createElement("div");
+    row.className = "skill-row";
+    row.innerHTML =
+      '<div class="skill-head">' +
+        '<label>' + s.label + '</label>' +
+        '<span class="skill-value" id="val-' + s.key + '">' + skills[s.key] + '/10</span>' +
+      '</div>' +
+      '<input type="range" min="1" max="10" step="1" value="' + skills[s.key] + '" id="slider-' + s.key + '">';
+    container.appendChild(row);
+
+    row.querySelector("input").addEventListener("input", function(e) {
+      document.getElementById("val-" + s.key).textContent = e.target.value + "/10";
+    });
+  });
+}
+
+function renderEquipmentGrid() {
+  const owned = loadEquipment();
+  const grid = document.getElementById("equipmentGrid");
+  grid.innerHTML = "";
+
+  EQUIPMENT.forEach(function(eq) {
+    const item = document.createElement("label");
+    item.className = "check-item" + (owned.indexOf(eq.key) !== -1 ? " checked" : "");
+    item.innerHTML =
+      '<input type="checkbox" value="' + eq.key + '" ' + (owned.indexOf(eq.key) !== -1 ? "checked" : "") + '>' +
+      '<span>' + eq.label + '</span>';
+
+    const checkbox = item.querySelector("input");
+    checkbox.addEventListener("change", function() {
+      item.classList.toggle("checked", checkbox.checked);
+    });
+
+    grid.appendChild(item);
+  });
+}
+
+function saveBilan() {
+  const name = document.getElementById("nameInput").value;
+  const position = document.getElementById("positionInput").value;
+  const jump = document.getElementById("jumpInput").value;
+  const goal = document.getElementById("goalInput").value;
+
+  localStorage.setItem("name", name);
+  localStorage.setItem("position", position);
+  localStorage.setItem("jump", jump);
+  localStorage.setItem("goal", goal);
+
+  const skills = {};
+  SKILLS.forEach(function(s) {
+    skills[s.key] = Number(document.getElementById("slider-" + s.key).value);
+  });
+  localStorage.setItem("vc_skills", JSON.stringify(skills));
+
+  const equipment = [];
+  document.querySelectorAll("#equipmentGrid input:checked").forEach(function(cb) {
+    equipment.push(cb.value);
+  });
+  localStorage.setItem("vc_equipment", JSON.stringify(equipment));
+
+  alert("✅ Bilan enregistré ! Ta prochaine séance sera adaptée en conséquence.");
+
+  document.getElementById("sessionContent").dataset.rendered = "";
+  refreshHome();
+  showPage("home");
+}
+
+// ---------- Génération de séance personnalisée ----------
+
+function generateSession() {
+  const skills = loadSkills();
+  const owned = loadEquipment();
+
+  const ranked = SKILLS.slice().sort(function(a, b) {
+    return skills[a.key] - skills[b.key];
+  });
+  const weakSkills = ranked.slice(0, 2).map(function(s) { return s.key; });
+
+  function hasEquipment(required) {
+    return required.every(function(item) { return owned.indexOf(item) !== -1; });
+  }
+
+  function pickForSkill(skillKey, count) {
+    const withEquipment = EXERCISES.filter(function(ex) {
+      return ex.skill === skillKey && hasEquipment(ex.equipment) && ex.equipment.length > 0;
+    });
+    const noEquipment = EXERCISES.filter(function(ex) {
+      return ex.skill === skillKey && ex.equipment.length === 0;
+    });
+    const pool = withEquipment.concat(noEquipment);
+    const seen = new Set();
+    const picked = [];
+    pool.forEach(function(ex) {
+      if (picked.length < count && !seen.has(ex.name)) {
+        seen.add(ex.name);
+        picked.push(ex);
+      }
+    });
+    return picked;
+  }
+
+  const warmup = WARMUPS[Math.floor(Math.random() * WARMUPS.length)];
+  const main = [];
+  weakSkills.forEach(function(skillKey) {
+    pickForSkill(skillKey, 2).forEach(function(ex) { main.push(ex); });
+  });
+
+  const bonusPool = EXERCISES.filter(function(ex) {
+    return weakSkills.indexOf(ex.skill) === -1 && hasEquipment(ex.equipment) && ex.equipment.length > 0;
+  });
+  const bonus = bonusPool.length ? [bonusPool[Math.floor(Math.random() * bonusPool.length)]] : [];
+
+  const session = [warmup].concat(main, bonus);
+  renderSession(session, weakSkills);
+}
+
+let currentSessionMeta = null;
+
+function renderSession(session, weakSkills) {
+  const skillLabel = {};
+  SKILLS.forEach(function(s) { skillLabel[s.key] = s.label; });
+
+  currentSessionMeta = { weakSkills: weakSkills, count: session.length };
+
+  const content = document.getElementById("sessionContent");
+  content.dataset.rendered = "1";
+
+  let html = '<div class="card"><p class="hint">🎯 Points travaillés aujourd\'hui : <strong>' +
+    weakSkills.map(function(k) { return skillLabel[k]; }).join(" + ") + '</strong></p></div>';
+
+  session.forEach(function(ex) {
+    html += '<div class="exercise">' +
+      (ex.skill ? '<span class="tag">' + skillLabel[ex.skill] + '</span>' : '<span class="tag">Échauffement</span>') +
+      '<h3>' + ex.name + '</h3>' +
+      '<div class="sets">' + ex.sets + '</div>' +
+      '<p class="desc">' + ex.desc + '</p>' +
+      (ex.equipment && ex.equipment.length ?
+        '<p class="desc">🎒 Matériel : ' + ex.equipment.join(", ") + '</p>' : '') +
+      '<a class="video" target="_blank" rel="noopener" href="' + videoUrl(ex.query) + '">🎥 Voir des vidéos de démonstration</a>' +
+      '</div>';
+  });
+
+  html += '<button onclick="completeSession()">✅ Séance terminée</button>';
+
+  content.innerHTML = html;
+}
+
+function completeSession() {
+  if (!currentSessionMeta) return;
+
+  const skillLabel = {};
+  SKILLS.forEach(function(s) { skillLabel[s.key] = s.label; });
+
+  const history = loadHistory();
+  history.unshift({
+    date: new Date().toLocaleDateString("fr-FR"),
+    skills: currentSessionMeta.weakSkills.map(function(k) { return skillLabel[k]; }),
+    exerciseCount: currentSessionMeta.count
+  });
+  localStorage.setItem("vc_history", JSON.stringify(history));
+
+  alert("🔥 Bravo ! Séance enregistrée dans ton suivi.");
+  refreshHome();
+  showPage("home");
+}
+
+// ---------- Suivi ----------
+
+function renderSuivi() {
+  const skills = loadSkills();
+  const barsContainer = document.getElementById("skillBars");
+  barsContainer.innerHTML = "";
+
+  SKILLS.forEach(function(s) {
+    const value = skills[s.key];
+    const row = document.createElement("div");
+    row.className = "bar-row";
+    row.innerHTML =
+      '<div class="bar-label">' + s.label + '</div>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:' + (value * 10) + '%"></div></div>' +
+      '<div class="bar-num">' + value + '</div>';
+    barsContainer.appendChild(row);
+  });
+
+  const history = loadHistory();
+  const historyContainer = document.getElementById("historyList");
+
+  if (!history.length) {
+    historyContainer.innerHTML = '<p class="empty">Aucune séance enregistrée pour l\'instant.</p>';
+    return;
+  }
+
+  historyContainer.innerHTML = history.map(function(h) {
+    return '<div class="history-item">' +
+      '<div class="date">' + h.date + '</div>' +
+      '<div class="details">' + h.exerciseCount + ' exercices — travail : ' + h.skills.join(", ") + '</div>' +
+      '</div>';
+  }).join("");
+}
+
+// ---------- Accueil ----------
+
+function refreshHome() {
+  const name = localStorage.getItem("name");
+  const jump = localStorage.getItem("jump");
+  const goal = localStorage.getItem("goal");
+  const history = loadHistory();
+  const skills = loadSkills();
+
+  document.getElementById("welcomeText").textContent = name ?
+    "Salut " + name + " 👋" : "Bienvenue sur VolleyCoach 👋";
+
+  document.getElementById("jumpStat").textContent = jump ? jump + " cm" : "0 cm";
+  document.getElementById("trainingStat").textContent = history.length;
+
+  const weakest = SKILLS.slice().sort(function(a, b) {
+    return skills[a.key] - skills[b.key];
+  })[0];
+  document.getElementById("weakStat").textContent = weakest.label;
+
+  document.getElementById("goalText").textContent = goal || "Configure ton profil pour commencer.";
+}
+
+// ---------- Initialisation ----------
+
+function loadProfile() {
+  const name = localStorage.getItem("name");
+  const position = localStorage.getItem("position");
+  const jump = localStorage.getItem("jump");
+  const goal = localStorage.getItem("goal");
+
+  if (name) document.getElementById("nameInput").value = name;
+  if (position) document.getElementById("positionInput").value = position;
+  if (jump) document.getElementById("jumpInput").value = jump;
+  if (goal) document.getElementById("goalInput").value = goal;
+}
+
+loadProfile();
+renderSkillSliders();
+renderEquipmentGrid();
+refreshHome();
+document.querySelector('nav button[data-page="home"]').classList.add("active");
+
+</script>
+
+</body>
+</html>
