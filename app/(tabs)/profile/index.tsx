@@ -116,6 +116,9 @@ export default function ProfileScreen() {
 
       <Button label="Modifier mon profil" variant="outline" onPress={() => router.push("/(tabs)/profile/edit")} />
       <Button label="Mon équipe" variant="outline" onPress={() => router.push("/(tabs)/profile/team")} />
+      {profile.role === "admin" ? (
+        <Button label="⚙️ Administration" variant="outline" onPress={() => router.push("/(tabs)/profile/admin")} />
+      ) : null}
       <Button label="Réglages & notifications" variant="ghost" onPress={() => router.push("/(tabs)/profile/settings")} />
       <Button label="Se déconnecter" variant="ghost" onPress={signOut} />
     </ScreenContainer>

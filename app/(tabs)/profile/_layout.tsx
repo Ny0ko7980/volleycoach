@@ -7,6 +7,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="edit" />
       <Stack.Screen name="goals" />
       <Stack.Screen name="team" />
+      <Stack.Screen name="admin" />
       <Stack.Screen name="settings" />
     </Stack>
   );

@@ -47,6 +47,20 @@ Depuis le dashboard Supabase → SQL Editor, exécute dans l'ordre :
 2. `supabase/migrations/0002_rls_policies.sql` — policies RLS (isolation stricte par joueur)
 3. `supabase/migrations/0003_seed_data.sql` — 18 exercices + 9 badges de départ
 4. `supabase/migrations/0004_team_management.sql` — code d'invitation équipe + fonctions `create_team_as_coach`/`join_team_by_code`/`leave_team`
+5. `supabase/migrations/0005_security_hardening.sql` — verrouille `role`/`is_premium` (non modifiables par un joueur, même via API directe) + déplace le calcul XP/série/badges côté serveur (`apply_session_rewards()`)
+
+### Devenir administrateur
+
+Aucun compte n'est admin par défaut (et un joueur ne peut plus se
+l'auto-attribuer depuis la migration 0005). Pour donner les droits admin à
+ton propre compte après inscription, exécute dans le SQL Editor Supabase :
+
+```sql
+update public.player_profiles set role = 'admin' where id = '<uuid-de-ton-compte>';
+```
+
+(Récupère ton UUID dans Authentication → Users.) Le bouton "⚙️ Administration"
+apparaît alors dans l'onglet Profil.
 
 Ou, avec la CLI Supabase liée à ton projet :
 
@@ -130,7 +144,7 @@ Remplace `extra.eas.projectId` dans `app.json` par l'ID de ton projet EAS
 | Mode hors-ligne (cache exercices, file d'attente fin de séance) | ⚠️ Partiel — cache lecture + file d'attente d'écriture simple, pas de résolution de conflits |
 | RLS Supabase (isolation stricte par joueur) | ✅ Fonctionnel |
 | Équipe / Club | ✅ Fonctionnel (v1 simplifiée) : un joueur crée une équipe (devient coach), partage un code d'invitation, les autres rejoignent avec ce code ; le coach consulte le roster (poste/niveau/série) |
-| Interface admin | ⚠️ Architecture prête (`role='admin'` + policies dédiées), pas d'écran dédié |
+| Interface admin | ✅ Fonctionnel : statistiques globales + gestion complète des exercices (créer/modifier/supprimer), accès verrouillé côté base de données à `role='admin'` |
 | Monétisation Premium | ⚠️ Architecture prête (`is_premium`, composant `PremiumGate`), aucun paiement réel (comme demandé) |
 
 Tout bouton présent dans l'app déclenche une action réelle (navigation, appel
@@ -158,10 +172,11 @@ Edge Function.
 11. **Déconnexion / reconnexion** : vérifier que la session est bien restaurée sans repasser par l'onboarding.
 12. **Hors-ligne** : couper le réseau, ouvrir la bibliothèque d'exercices (doit afficher le cache), terminer une séance (doit s'enregistrer en file d'attente locale), reconnecter le réseau et vérifier la synchronisation.
 13. **Équipe** : sur un 2ᵉ compte, créer une équipe (Profil → Mon équipe → Créer) → noter le code affiché. Sur le 1ᵉʳ compte, rejoindre avec ce code. Retourner sur le compte coach → le joueur doit apparaître dans le roster avec son poste/niveau/série.
+14. **Admin** : passer un compte en `role='admin'` via SQL (voir ci-dessus) → le bouton "⚙️ Administration" apparaît dans Profil → créer un nouvel exercice, vérifier qu'il apparaît dans la bibliothèque d'exercices, le modifier, puis le supprimer.
 
 ## 10. Prochaines étapes suggérées
 
-- Interface admin dédiée (gestion exercices/utilisateurs)
+- Gestion des utilisateurs depuis l'interface admin (actuellement: exercices + stats globales uniquement)
 - Intégration Stripe / achats intégrés pour l'offre Premium
 - Connexion Apple/Google (Supabase Auth le supporte nativement, juste à activer côté dashboard + ajouter les boutons)
 - `supabase gen types typescript` pour générer les types DB automatiquement une fois le schéma stabilisé
