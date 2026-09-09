@@ -354,8 +354,14 @@ label {
 
     <div class="hero">
       <h2 id="welcomeText">Bienvenue sur VolleyCoach 👋</h2>
-      <p>Séances personnalisées selon ton niveau et ton matériel.</p>
-      <button onclick="showPage('session')">Générer ma séance</button>
+      <p id="heroSubtext">Séances personnalisées selon ton niveau et ton matériel.</p>
+      <button id="heroBtn" onclick="showPage('session')">Générer ma séance</button>
+    </div>
+
+    <div class="card" id="onboardingCard">
+      <h2>👋 Pour commencer</h2>
+      <p class="hint">Fais ton bilan de compétences et indique ton matériel disponible : VolleyCoach pourra alors te construire des séances 100&nbsp;% adaptées à toi.</p>
+      <button onclick="showPage('bilan')">📝 Faire mon bilan</button>
     </div>
 
     <div class="card">
@@ -370,10 +376,22 @@ label {
           Séances faites
         </div>
         <div class="stat">
-          <strong id="weakStat">-</strong>
-          Point à travailler
+          <strong id="lastSessionStat">-</strong>
+          Dernière séance
         </div>
       </div>
+    </div>
+
+    <div class="card" id="weakSkillCard">
+      <h2>🔎 Point à travailler en priorité</h2>
+      <div id="weakSkillBar"></div>
+      <p class="hint">VolleyCoach cible en premier tes compétences les plus faibles pour te faire progresser plus vite.</p>
+    </div>
+
+    <div class="card" id="previewCard">
+      <h2>🏋️ Prochaine séance</h2>
+      <p class="hint" id="previewText"></p>
+      <button onclick="showPage('session')">Voir la séance complète</button>
     </div>
 
     <div class="card">
@@ -625,6 +643,16 @@ function videoUrl(query) {
   return "https://www.youtube.com/results?search_query=" + encodeURIComponent(query + " volleyball");
 }
 
+function hasBilan() {
+  return !!localStorage.getItem("vc_skills");
+}
+
+function rankSkills(skills) {
+  return SKILLS.slice().sort(function(a, b) {
+    return skills[a.key] - skills[b.key];
+  });
+}
+
 // ---------- Navigation ----------
 
 function showPage(page) {
@@ -726,9 +754,7 @@ function generateSession() {
   const skills = loadSkills();
   const owned = loadEquipment();
 
-  const ranked = SKILLS.slice().sort(function(a, b) {
-    return skills[a.key] - skills[b.key];
-  });
+  const ranked = rankSkills(skills);
   const weakSkills = ranked.slice(0, 2).map(function(s) { return s.key; });
 
   function hasEquipment(required) {
@@ -861,19 +887,52 @@ function refreshHome() {
   const goal = localStorage.getItem("goal");
   const history = loadHistory();
   const skills = loadSkills();
+  const owned = loadEquipment();
+  const firstTime = !hasBilan();
 
   document.getElementById("welcomeText").textContent = name ?
     "Salut " + name + " 👋" : "Bienvenue sur VolleyCoach 👋";
 
   document.getElementById("jumpStat").textContent = jump ? jump + " cm" : "0 cm";
   document.getElementById("trainingStat").textContent = history.length;
-
-  const weakest = SKILLS.slice().sort(function(a, b) {
-    return skills[a.key] - skills[b.key];
-  })[0];
-  document.getElementById("weakStat").textContent = weakest.label;
+  document.getElementById("lastSessionStat").textContent = history.length ? history[0].date : "Aucune";
 
   document.getElementById("goalText").textContent = goal || "Configure ton profil pour commencer.";
+
+  // Onboarding : tant qu'aucun bilan n'a été fait, on guide l'utilisateur vers le bilan
+  // plutôt que de générer une séance vide / non personnalisée.
+  document.getElementById("onboardingCard").style.display = firstTime ? "block" : "none";
+  document.getElementById("weakSkillCard").style.display = firstTime ? "none" : "block";
+  document.getElementById("previewCard").style.display = firstTime ? "none" : "block";
+
+  const heroSubtext = document.getElementById("heroSubtext");
+  const heroBtn = document.getElementById("heroBtn");
+  if (firstTime) {
+    heroSubtext.textContent = "Commence par ton bilan pour débloquer des séances 100 % personnalisées.";
+    heroBtn.textContent = "Faire mon bilan";
+    heroBtn.setAttribute("onclick", "showPage('bilan')");
+    return;
+  }
+  heroSubtext.textContent = "Séances personnalisées selon ton niveau et ton matériel.";
+  heroBtn.textContent = "Générer ma séance";
+  heroBtn.setAttribute("onclick", "showPage('session')");
+
+  const ranked = rankSkills(skills);
+  const weakest = ranked[0];
+  const weakBar = document.getElementById("weakSkillBar");
+  weakBar.innerHTML =
+    '<div class="bar-row">' +
+      '<div class="bar-label">' + weakest.label + '</div>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:' + (skills[weakest.key] * 10) + '%"></div></div>' +
+      '<div class="bar-num">' + skills[weakest.key] + '</div>' +
+    '</div>';
+
+  const nextTargets = ranked.slice(0, 2).map(function(s) { return s.label; }).join(" + ");
+  const equipmentNote = owned.length
+    ? "Utilise ton matériel déclaré (" + owned.length + (owned.length > 1 ? " équipements)." : " équipement).")
+    : "Aucun matériel déclaré : séance au poids du corps.";
+  document.getElementById("previewText").textContent =
+    "🎯 Prochaine séance ciblée sur : " + nextTargets + ". " + equipmentNote;
 }
 
 // ---------- Initialisation ----------
