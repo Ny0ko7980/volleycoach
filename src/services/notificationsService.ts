@@ -3,7 +3,8 @@ import { Platform } from "react-native";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: false,
     shouldSetBadge: false,
   }),
@@ -39,7 +40,7 @@ export async function scheduleDailyTrainingReminder(hour = 18, minute = 0) {
       title: "C'est l'heure de progresser 🏐",
       body: "Ta séance du jour t'attend dans Coach Volley.",
     },
-    trigger: { hour, minute, repeats: true },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },
   });
 }
 
@@ -50,7 +51,7 @@ export async function scheduleStreakReminder(streakCount: number) {
       title: `🔥 Série de ${streakCount} jours !`,
       body: "Ne casse pas ta série, entraîne-toi aujourd'hui.",
     },
-    trigger: { seconds: 60 * 60 * 20 }, // rappel dans ~20h si pas d'entraînement entre-temps
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 60 * 60 * 20 }, // rappel dans ~20h si pas d'entraînement entre-temps
   });
 }
 
