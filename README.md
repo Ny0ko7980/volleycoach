@@ -46,6 +46,7 @@ Depuis le dashboard Supabase → SQL Editor, exécute dans l'ordre :
 1. `supabase/migrations/0001_init_schema.sql` — 13 tables + relations + triggers
 2. `supabase/migrations/0002_rls_policies.sql` — policies RLS (isolation stricte par joueur)
 3. `supabase/migrations/0003_seed_data.sql` — 18 exercices + 9 badges de départ
+4. `supabase/migrations/0004_team_management.sql` — code d'invitation équipe + fonctions `create_team_as_coach`/`join_team_by_code`/`leave_team`
 
 Ou, avec la CLI Supabase liée à ton projet :
 
@@ -128,7 +129,7 @@ Remplace `extra.eas.projectId` dans `app.json` par l'ID de ton projet EAS
 | Notifications locales (rappel quotidien, série, objectif, badge) | ✅ Fonctionnel (expo-notifications) |
 | Mode hors-ligne (cache exercices, file d'attente fin de séance) | ⚠️ Partiel — cache lecture + file d'attente d'écriture simple, pas de résolution de conflits |
 | RLS Supabase (isolation stricte par joueur) | ✅ Fonctionnel |
-| Équipe / Club | ⚠️ Schéma + policies prêts, écrans non construits (architecture "v1 simplifiée" comme demandé) |
+| Équipe / Club | ✅ Fonctionnel (v1 simplifiée) : un joueur crée une équipe (devient coach), partage un code d'invitation, les autres rejoignent avec ce code ; le coach consulte le roster (poste/niveau/série) |
 | Interface admin | ⚠️ Architecture prête (`role='admin'` + policies dédiées), pas d'écran dédié |
 | Monétisation Premium | ⚠️ Architecture prête (`is_premium`, composant `PremiumGate`), aucun paiement réel (comme demandé) |
 
@@ -156,10 +157,10 @@ Edge Function.
 10. **Notifications** : activer les notifications dans Réglages → vérifier la demande de permission système puis la programmation du rappel quotidien.
 11. **Déconnexion / reconnexion** : vérifier que la session est bien restaurée sans repasser par l'onboarding.
 12. **Hors-ligne** : couper le réseau, ouvrir la bibliothèque d'exercices (doit afficher le cache), terminer une séance (doit s'enregistrer en file d'attente locale), reconnecter le réseau et vérifier la synchronisation.
+13. **Équipe** : sur un 2ᵉ compte, créer une équipe (Profil → Mon équipe → Créer) → noter le code affiché. Sur le 1ᵉʳ compte, rejoindre avec ce code. Retourner sur le compte coach → le joueur doit apparaître dans le roster avec son poste/niveau/série.
 
 ## 10. Prochaines étapes suggérées
 
-- Écrans Équipe/Club (le schéma et les policies existent déjà)
 - Interface admin dédiée (gestion exercices/utilisateurs)
 - Intégration Stripe / achats intégrés pour l'offre Premium
 - Connexion Apple/Google (Supabase Auth le supporte nativement, juste à activer côté dashboard + ajouter les boutons)

@@ -181,5 +181,16 @@ export interface Team {
   club_id: string | null;
   name: string;
   coach_id: string | null;
+  invite_code: string;
   created_at: string;
+}
+
+export type TeamMemberRole = "player" | "coach";
+
+export interface TeamMember {
+  team_id: string;
+  player_id: string;
+  role: TeamMemberRole;
+  joined_at: string;
+  player?: PlayerProfile;
 }
