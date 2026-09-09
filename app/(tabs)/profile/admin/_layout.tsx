@@ -5,6 +5,7 @@ export default function AdminLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="exercise-form" />
+      <Stack.Screen name="users" />
     </Stack>
   );
 }

@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { Exercise, Objective, PlayerLevel, Position } from "@/types/database";
+import type { Exercise, Objective, PlayerLevel, PlayerProfile, PlayerRole, Position } from "@/types/database";
 
 export interface GlobalStats {
   totalPlayers: number;
@@ -95,4 +95,30 @@ export async function updateExerciseAsAdmin(id: string, input: ExerciseInput): P
 export async function deleteExerciseAsAdmin(id: string): Promise<void> {
   const { error } = await supabase.from("exercises").delete().eq("id", id);
   if (error) throw error;
+}
+
+export async function fetchAllPlayersAsAdmin(): Promise<PlayerProfile[]> {
+  const { data, error } = await supabase
+    .from("player_profiles")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as PlayerProfile[];
+}
+
+/**
+ * Modifie le rôle d'un autre joueur. Ne fonctionne que si l'appelant a
+ * lui-même role='admin' en base : la migration 0005 bloque toute écriture
+ * de `role` par un non-admin via un trigger côté serveur, quelle que soit
+ * l'UI qui l'appelle.
+ */
+export async function setPlayerRoleAsAdmin(playerId: string, role: PlayerRole): Promise<PlayerProfile> {
+  const { data, error } = await supabase
+    .from("player_profiles")
+    .update({ role })
+    .eq("id", playerId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as PlayerProfile;
 }

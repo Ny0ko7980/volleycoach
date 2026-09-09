@@ -86,6 +86,7 @@ export default function AdminHomeScreen() {
             <StatBlock label="Séances terminées" value={stats.totalCompletedSessions} />
             <StatBlock label="Objectifs atteints" value={stats.totalGoalsAchieved} />
           </View>
+          <Button label="Gérer les utilisateurs" variant="outline" onPress={() => router.push("/(tabs)/profile/admin/users")} />
         </Card>
       ) : null}
 
