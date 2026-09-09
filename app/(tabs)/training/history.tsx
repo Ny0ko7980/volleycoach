@@ -46,7 +46,7 @@ export default function TrainingHistoryScreen() {
         <EmptyState icon="🗓️" title="Aucune séance enregistrée" description="Ton historique apparaîtra ici après ta première séance." />
       ) : (
         sessions.map((s) => {
-          const status = STATUS_LABEL[s.status];
+          const status = STATUS_LABEL[s.status] ?? { label: s.status, tone: "neutral" as const };
           return (
             <Card key={s.id}>
               <View style={styles.row}>

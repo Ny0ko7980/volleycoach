@@ -17,7 +17,6 @@ function RootNavigationGate() {
   const { session, initializing, init } = useAuthStore();
   const { profile, setProfile } = useProfileStore();
   const [profileLoading, setProfileLoading] = useState(true);
-  const { theme } = useAppTheme();
 
   useEffect(() => {
     const unsubscribe = init();

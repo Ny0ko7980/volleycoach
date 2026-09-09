@@ -81,6 +81,7 @@ export default function TrainingModeScreen() {
 
   const exercises = [...workout.workout_exercises].sort((a, b) => a.order_index - b.order_index);
   const current = exercises[index];
+  if (!current) return <ErrorView message="Exercice introuvable dans cette séance." />;
   const isLast = index === exercises.length - 1;
   const isLastSet = setNumber >= current.sets;
 
@@ -142,7 +143,7 @@ export default function TrainingModeScreen() {
           : "Bravo, continue comme ça !",
         [{ text: "OK", onPress: () => router.replace("/(tabs)") }]
       );
-    } catch (e) {
+    } catch {
       // Hors-ligne ou erreur réseau: on met la complétion en file d'attente
       // pour synchronisation ultérieure, sans bloquer le joueur.
       await queueMutation("workout_sessions", {

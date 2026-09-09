@@ -32,6 +32,9 @@ export default function ChatScreen() {
       prefillSent.current = true;
       handleSend(prefill);
     }
+    // handleSend est recréée à chaque rendu; on ne veut déclencher l'envoi
+    // du préremplissage qu'une seule fois, au chargement initial.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, prefill, messages.length]);
 
   async function handleSend(overrideText?: string) {

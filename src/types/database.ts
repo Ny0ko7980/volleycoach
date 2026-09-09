@@ -183,11 +183,3 @@ export interface Team {
   coach_id: string | null;
   created_at: string;
 }
-
-// Placeholder minimal pour le typage générique du client Supabase.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface Database {
-  public: {
-    Tables: Record<string, { Row: Record<string, unknown> }>;
-  };
-}
