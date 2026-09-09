@@ -72,7 +72,7 @@ values
    'Pense "sol brûlant": minimise le temps de contact au sol.'),
 
   ('Gainage dynamique', 'Renforcement du tronc pour la stabilité en vol et en défense.',
-   '{setter,outside_hitter,opposite,middle_blocker,libero}', 'debutant', 'physique', 8, '{tapis}', 2,
+   '{setter,outside_hitter,opposite,middle_blocker,libero}', 'debutant', 'global', 8, '{tapis}', 2,
    '3 séries de 30 secondes de gainage (planche, gainage latéral).',
    'Bassin qui s''affaisse, respiration bloquée.',
    'Respire normalement, ne bloque pas ta respiration pendant l''effort.'),
