@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { LoadingView } from "@/components/ui/LoadingView";
+import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useAuthStore } from "@/store/authStore";
 import { useProfileStore } from "@/store/profileStore";
@@ -22,11 +23,13 @@ export default function ProfileScreen() {
   const { signOut } = useAuthStore();
   const { profile, setProfile } = useProfileStore();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [unlocked, setUnlocked] = useState<PlayerAchievement[]>([]);
   const [allAchievements, setAllAchievements] = useState<Achievement[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [freshProfile, playerAchievements, achievements] = await Promise.all([
         fetchMyProfile(),
@@ -36,6 +39,9 @@ export default function ProfileScreen() {
       if (freshProfile) setProfile(freshProfile);
       setUnlocked(playerAchievements);
       setAllAchievements(achievements);
+      if (!freshProfile) setError("Profil introuvable.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur de chargement du profil.");
     } finally {
       setLoading(false);
     }
@@ -47,7 +53,8 @@ export default function ProfileScreen() {
     }, [load])
   );
 
-  if (loading || !profile) return <LoadingView />;
+  if (loading) return <LoadingView />;
+  if (error || !profile) return <ErrorView message={error ?? "Profil introuvable."} onRetry={load} />;
 
   const { level, progressInLevel, xpForNext } = xpToNextLevel(profile.xp);
   const unlockedIds = new Set(unlocked.map((u) => u.achievement_id));
