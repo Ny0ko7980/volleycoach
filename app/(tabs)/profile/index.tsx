@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { Flame, Lock } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { LoadingView } from "@/components/ui/LoadingView";
@@ -14,7 +16,7 @@ import { useProfileStore } from "@/store/profileStore";
 import { fetchMyProfile } from "@/services/profileService";
 import { fetchPlayerAchievements, fetchAllAchievements, xpToNextLevel } from "@/services/gamificationService";
 import { positionLabel, levelLabel, objectiveLabel } from "@/constants/positions";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 import type { Achievement, PlayerAchievement } from "@/types/database";
 
 export default function ProfileScreen() {
@@ -57,13 +59,13 @@ export default function ProfileScreen() {
   if (error || !profile) return <ErrorView message={error ?? "Profil introuvable."} onRetry={load} />;
 
   const { level, progressInLevel, xpForNext } = xpToNextLevel(profile.xp);
-  const unlockedIds = new Set(unlocked.map((u) => u.achievement_id));
+  const unlockedByAchievementId = new Map(unlocked.map((u) => [u.achievement_id, u]));
 
   return (
     <ScreenContainer onRefresh={load} refreshing={loading}>
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: theme.primaryMuted }]}>
-          <Text style={styles.avatarLabel}>{profile.username.slice(0, 2).toUpperCase()}</Text>
+          <Text style={[styles.avatarLabel, { color: theme.primary }]}>{profile.username.slice(0, 2).toUpperCase()}</Text>
         </View>
         <Text style={[styles.name, { color: theme.text }]}>{profile.username}</Text>
         <View style={styles.badgeRow}>
@@ -82,7 +84,7 @@ export default function ProfileScreen() {
         </View>
         <ProgressBar percent={(progressInLevel / xpForNext) * 100} />
         <View style={styles.quickStats}>
-          <QuickStat label="Série" value={`${profile.streak_count}🔥`} />
+          <QuickStat icon={<Flame size={14} color={theme.primary} />} label="Série" value={`${profile.streak_count}`} />
           <QuickStat label="Record série" value={`${profile.longest_streak}`} />
           <QuickStat label="XP total" value={`${profile.xp}`} />
         </View>
@@ -90,11 +92,11 @@ export default function ProfileScreen() {
 
       <Card>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Objectifs</Text>
-        <View style={styles.badgeRow}>
+        <View style={styles.chipRow}>
           {profile.goals.length === 0 ? (
             <Text style={{ color: theme.textMuted }}>Aucun objectif défini.</Text>
           ) : (
-            profile.goals.map((g) => <Badge key={g} label={objectiveLabel(g)} tone="primary" />)
+            profile.goals.map((g) => <Chip key={g} label={objectiveLabel(g)} selected />)
           )}
         </View>
         <View style={{ marginTop: spacing.md }}>
@@ -108,13 +110,34 @@ export default function ProfileScreen() {
         </Text>
         <View style={styles.achievementsGrid}>
           {allAchievements.map((a) => {
-            const isUnlocked = unlockedIds.has(a.id);
+            const unlockedEntry = unlockedByAchievementId.get(a.id);
+            const isUnlocked = Boolean(unlockedEntry);
             return (
-              <View key={a.id} style={[styles.achievement, { opacity: isUnlocked ? 1 : 0.3 }]}>
-                <Text style={styles.achievementIcon}>{a.icon}</Text>
-                <Text style={{ color: theme.text, fontSize: 11, textAlign: "center" }} numberOfLines={2}>
+              <View key={a.id} style={styles.achievement}>
+                <View
+                  style={[
+                    styles.achievementIconWrap,
+                    { backgroundColor: theme.surfaceAlt, opacity: isUnlocked ? 1 : 0.35 },
+                  ]}
+                >
+                  <Text style={[styles.achievementIcon, !isUnlocked && styles.achievementIconLocked]}>{a.icon}</Text>
+                  {!isUnlocked ? (
+                    <View style={[styles.lockBadge, { backgroundColor: theme.background }]}>
+                      <Lock size={10} color={theme.textMuted} />
+                    </View>
+                  ) : null}
+                </View>
+                <Text
+                  style={{ color: isUnlocked ? theme.text : theme.textMuted, fontSize: 11, textAlign: "center" }}
+                  numberOfLines={2}
+                >
                   {a.name}
                 </Text>
+                {isUnlocked && unlockedEntry ? (
+                  <Text style={{ color: theme.textMuted, fontSize: 10, marginTop: 2 }}>
+                    {new Date(unlockedEntry.unlocked_at).toLocaleDateString("fr-FR")}
+                  </Text>
+                ) : null}
               </View>
             );
           })}
@@ -124,7 +147,7 @@ export default function ProfileScreen() {
       <Button label="Modifier mon profil" variant="outline" onPress={() => router.push("/(tabs)/profile/edit")} />
       <Button label="Mon équipe" variant="outline" onPress={() => router.push("/(tabs)/profile/team")} />
       {profile.role === "admin" ? (
-        <Button label="⚙️ Administration" variant="outline" onPress={() => router.push("/(tabs)/profile/admin")} />
+        <Button label="Administration" variant="outline" onPress={() => router.push("/(tabs)/profile/admin")} />
       ) : null}
       <Button label="Réglages & notifications" variant="ghost" onPress={() => router.push("/(tabs)/profile/settings")} />
       <Button label="Se déconnecter" variant="ghost" onPress={signOut} />
@@ -132,11 +155,14 @@ export default function ProfileScreen() {
   );
 }
 
-function QuickStat({ label, value }: { label: string; value: string }) {
+function QuickStat({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
   const { theme } = useAppTheme();
   return (
     <View style={styles.quickStatBlock}>
-      <Text style={{ color: theme.primary, fontWeight: "800", fontSize: 16 }}>{value}</Text>
+      <View style={styles.quickStatValueRow}>
+        {icon}
+        <Text style={{ color: theme.text, fontWeight: "800", fontSize: 16 }}>{value}</Text>
+      </View>
       <Text style={{ color: theme.textMuted, fontSize: 11 }}>{label}</Text>
     </View>
   );
@@ -144,15 +170,36 @@ function QuickStat({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   header: { alignItems: "center", marginTop: spacing.md, marginBottom: spacing.lg },
-  avatar: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm },
-  avatarLabel: { fontSize: 24, fontWeight: "800", color: "#FF6A00" },
-  name: { fontSize: 22, fontWeight: "800" },
-  badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm },
+  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm },
+  avatarLabel: { fontSize: 26, fontWeight: "800" },
+  name: { ...typography.sectionTitle },
+  badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm, justifyContent: "center" },
+  chipRow: { flexDirection: "row", flexWrap: "wrap" },
   levelRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.sm },
   quickStats: { flexDirection: "row", justifyContent: "space-around", marginTop: spacing.lg },
   quickStatBlock: { alignItems: "center" },
+  quickStatValueRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: spacing.sm },
   achievementsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
-  achievement: { width: 72, alignItems: "center" },
-  achievementIcon: { fontSize: 28, marginBottom: spacing.xs },
+  achievement: { width: 76, alignItems: "center" },
+  achievementIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.xs,
+  },
+  achievementIcon: { fontSize: 26 },
+  achievementIconLocked: { opacity: 0.6 },
+  lockBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Lightbulb } from "lucide-react-native";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { LoadingView } from "@/components/ui/LoadingView";
@@ -193,7 +194,10 @@ export default function TrainingModeScreen() {
             </Text>
             <Text style={[styles.instructions, { color: theme.textMuted }]}>{current.exercise?.instructions}</Text>
             {current.exercise?.tips ? (
-              <Text style={[styles.tip, { color: theme.text }]}>💡 {current.exercise.tips}</Text>
+              <View style={styles.tipRow}>
+                <Lightbulb size={15} color={theme.warning} />
+                <Text style={[styles.tip, { color: theme.text }]}>{current.exercise.tips}</Text>
+              </View>
             ) : null}
           </>
         )}
@@ -202,11 +206,11 @@ export default function TrainingModeScreen() {
       <View style={styles.controls}>
         <View style={styles.controlRow}>
           <View style={styles.controlButton}>
-            <Button label="◀ Précédent" variant="ghost" onPress={handlePrevious} disabled={index === 0 && setNumber === 1} />
+            <Button label="Précédent" variant="ghost" onPress={handlePrevious} disabled={index === 0 && setNumber === 1} />
           </View>
           <View style={styles.controlButton}>
             <Button
-              label={isLast && isLastSet && phase === "exercise" ? "Terminer ✅" : "Suivant ▶"}
+              label={isLast && isLastSet && phase === "exercise" ? "Terminer" : "Suivant"}
               onPress={handleNext}
               loading={finishing}
             />
@@ -227,7 +231,8 @@ const styles = StyleSheet.create({
   exerciseName: { fontSize: 28, fontWeight: "800", textAlign: "center", marginBottom: spacing.sm },
   setInfo: { fontSize: 18, fontWeight: "700", textAlign: "center", marginBottom: spacing.lg },
   instructions: { fontSize: 16, lineHeight: 24, textAlign: "center" },
-  tip: { fontSize: 14, textAlign: "center", marginTop: spacing.lg, fontStyle: "italic" },
+  tipRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.xs, marginTop: spacing.lg, paddingHorizontal: spacing.md },
+  tip: { flex: 1, fontSize: 14, fontStyle: "italic" },
   restLabel: { fontSize: 14, fontWeight: "700", letterSpacing: 1, marginBottom: spacing.md },
   timer: { fontSize: 64, fontWeight: "800", marginBottom: spacing.xl },
   controls: { gap: spacing.sm },

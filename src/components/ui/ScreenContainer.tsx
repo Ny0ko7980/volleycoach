@@ -39,5 +39,5 @@ export function ScreenContainer({ children, scroll = true, refreshing, onRefresh
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  padded: { padding: 16, paddingBottom: 40 },
+  padded: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
 });

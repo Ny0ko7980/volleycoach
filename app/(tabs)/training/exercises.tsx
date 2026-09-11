@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FlatList, Text, View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import NetInfo from "@react-native-community/netinfo";
+import { Search } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Chip } from "@/components/ui/Chip";
 import { ExerciseCard } from "@/components/exercises/ExerciseCard";
@@ -12,7 +13,7 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { fetchExercises, type ExerciseFilters } from "@/services/exerciseService";
 import { cacheExercisesForOffline, getCachedExercises } from "@/services/offlineQueue";
 import { OBJECTIVES, LEVELS, POSITIONS } from "@/constants/positions";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 import type { Exercise, Objective, PlayerLevel, Position } from "@/types/database";
 
 export default function ExerciseLibraryScreen() {
@@ -86,7 +87,7 @@ export default function ExerciseLibraryScreen() {
       ) : error ? (
         <ErrorView message={error} onRetry={() => load(filters)} />
       ) : exercises.length === 0 ? (
-        <EmptyState icon="🔍" title="Aucun exercice trouvé" description="Essaie d'autres filtres." />
+        <EmptyState icon={<Search size={26} color={theme.textMuted} />} title="Aucun exercice trouvé" description="Essaie d'autres filtres." />
       ) : (
         <FlatList
           data={exercises}
@@ -102,9 +103,9 @@ export default function ExerciseLibraryScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  title: { fontSize: 22, fontWeight: "800", marginBottom: spacing.sm },
+  header: { paddingHorizontal: 20, paddingTop: spacing.sm },
+  title: { ...typography.screenTitle, marginBottom: spacing.sm },
   filterLabel: { fontSize: 12, fontWeight: "700", marginTop: spacing.sm, marginBottom: spacing.xs },
   chipRow: { flexDirection: "row", flexWrap: "wrap" },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  list: { paddingHorizontal: 20, paddingBottom: spacing.xxl },
 });

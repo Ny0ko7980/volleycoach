@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Text, View, StyleSheet } from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import { TriangleAlert, Lightbulb } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -65,14 +66,20 @@ export default function ExerciseDetailScreen() {
 
       {exercise.common_mistakes ? (
         <Card>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>⚠️ Erreurs fréquentes</Text>
+          <View style={styles.sectionTitleRow}>
+            <TriangleAlert size={15} color={theme.warning} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Erreurs fréquentes</Text>
+          </View>
           <Text style={{ color: theme.textMuted, lineHeight: 20 }}>{exercise.common_mistakes}</Text>
         </Card>
       ) : null}
 
       {exercise.tips ? (
         <Card>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>💡 Conseil</Text>
+          <View style={styles.sectionTitleRow}>
+            <Lightbulb size={15} color={theme.warning} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Conseil</Text>
+          </View>
           <Text style={{ color: theme.textMuted, lineHeight: 20 }}>{exercise.tips}</Text>
         </Card>
       ) : null}
@@ -83,5 +90,6 @@ export default function ExerciseDetailScreen() {
 const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "800", marginTop: spacing.sm, marginBottom: spacing.sm },
   badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginBottom: spacing.md },
-  sectionTitle: { fontSize: 14, fontWeight: "700", marginBottom: spacing.xs },
+  sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginBottom: spacing.xs },
+  sectionTitle: { fontSize: 14, fontWeight: "700" },
 });

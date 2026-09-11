@@ -21,7 +21,7 @@ export function Chip({ label, selected, onPress }: Props) {
         },
       ]}
     >
-      <Text style={{ color: selected ? "#FFFFFF" : theme.text, fontWeight: "600", fontSize: 13 }}>{label}</Text>
+      <Text style={{ color: selected ? "#FFFFFF" : theme.textMuted, fontWeight: "600", fontSize: 13 }}>{label}</Text>
     </Pressable>
   );
 }

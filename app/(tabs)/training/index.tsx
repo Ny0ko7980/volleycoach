@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { CircleCheck, Clock3, CalendarClock } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +11,7 @@ import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
 import { fetchTodaySession, fetchSessionHistory } from "@/services/workoutService";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 import type { WorkoutSession } from "@/types/database";
 
 export default function TrainingHomeScreen() {
@@ -85,14 +86,19 @@ export default function TrainingHomeScreen() {
         recent.map((s) => (
           <Card key={s.id}>
             <View style={styles.historyRow}>
-              <Text style={{ color: theme.text, fontWeight: "600" }}>{s.workout?.title ?? "Séance"}</Text>
+              <Text style={{ color: theme.text, fontWeight: "600", flex: 1 }} numberOfLines={1}>
+                {s.workout?.title ?? "Séance"}
+              </Text>
               <Text style={{ color: theme.textMuted, fontSize: 12 }}>
                 {new Date(s.created_at).toLocaleDateString("fr-FR")}
               </Text>
             </View>
-            <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: spacing.xs }}>
-              {s.status === "completed" ? "✅ Terminée" : s.status === "in_progress" ? "⏳ En cours" : "📅 Planifiée"}
-            </Text>
+            <View style={styles.statusRow}>
+              <SessionStatusIcon status={s.status} color={theme.textMuted} />
+              <Text style={{ color: theme.textMuted, fontSize: 12, marginLeft: spacing.xs }}>
+                {s.status === "completed" ? "Terminée" : s.status === "in_progress" ? "En cours" : "Planifiée"}
+              </Text>
+            </View>
           </Card>
         ))
       )}
@@ -100,7 +106,14 @@ export default function TrainingHomeScreen() {
   );
 }
 
+function SessionStatusIcon({ status, color }: { status: string; color: string }) {
+  if (status === "completed") return <CircleCheck size={14} color={color} />;
+  if (status === "in_progress") return <Clock3 size={14} color={color} />;
+  return <CalendarClock size={14} color={color} />;
+}
+
 const styles = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: "800", marginTop: spacing.sm, marginBottom: spacing.lg },
+  title: { ...typography.displayTitle, fontSize: 28, marginTop: spacing.sm, marginBottom: spacing.lg },
   historyRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  statusRow: { flexDirection: "row", alignItems: "center", marginTop: spacing.xs },
 });

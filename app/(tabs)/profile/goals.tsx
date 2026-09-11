@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, Text, View, StyleSheet } from "react-native";
+import { Target } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { Button } from "@/components/ui/Button";
@@ -41,7 +42,7 @@ export default function GoalsScreen() {
       </View>
 
       {goals.length === 0 ? (
-        <EmptyState icon="🎯" title="Aucun objectif" description="Crée ton premier objectif personnel." />
+        <EmptyState icon={<Target size={26} color={theme.textMuted} />} title="Aucun objectif" description="Crée ton premier objectif personnel." />
       ) : (
         <>
           <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>En cours ({active.length})</Text>

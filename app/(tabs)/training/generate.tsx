@@ -8,7 +8,7 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
 import { generateWorkout, startWorkoutSession } from "@/services/workoutService";
 import { OBJECTIVES } from "@/constants/positions";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 import type { Objective } from "@/types/database";
 
 const DURATIONS = [15, 20, 30, 45, 60];
@@ -71,7 +71,7 @@ export default function GenerateWorkoutScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 22, fontWeight: "800", marginTop: spacing.sm, marginBottom: spacing.lg },
+  title: { ...typography.screenTitle, marginTop: spacing.sm, marginBottom: spacing.lg },
   label: { fontSize: 13, fontWeight: "700", marginBottom: spacing.sm, marginTop: spacing.sm },
   wrap: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.lg },
 });

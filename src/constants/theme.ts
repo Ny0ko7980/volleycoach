@@ -1,5 +1,6 @@
-// Palette "sportive premium": fond sombre profond, accent orange dynamique
-// (couleur volley-ball), succès vert, alerte rouge. Mode clair en miroir.
+// Design system "Coach Volley": interface sombre premium, accent orange
+// (couleur volley-ball). Palette unique définie ici — aucune couleur ne
+// doit être recopiée en dur ailleurs dans l'app.
 
 export const lightTheme = {
   background: "#F4F6FB",
@@ -15,25 +16,40 @@ export const lightTheme = {
   warning: "#F59E0B",
   danger: "#DC2626",
   chartLine: "#2563EB",
+  tabBarBackground: "#FFFFFF",
 };
 
 export const darkTheme = {
-  background: "#0B1220",
-  surface: "#141B2C",
-  surfaceAlt: "#1B2338",
-  border: "#242D45",
-  text: "#F5F7FC",
-  textMuted: "#9AA4BF",
-  primary: "#FF6A00",
+  background: "#0D1017",
+  surface: "#171B24",
+  surfaceAlt: "#202632",
+  border: "#262C38",
+  text: "#F7F8FA",
+  textMuted: "#9299A8",
+  primary: "#FF6500",
   primaryMuted: "#3A2213",
-  secondary: "#3B82F6",
+  secondary: "#FF8A3D",
   success: "#22C55E",
   warning: "#FBBF24",
   danger: "#EF4444",
-  chartLine: "#3B82F6",
+  chartLine: "#FF8A3D",
+  tabBarBackground: "#12161F",
 };
 
 export type AppTheme = typeof lightTheme;
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
-export const radius = { sm: 8, md: 12, lg: 16, xl: 24, pill: 999 };
+export const radius = { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 };
+
+// Échelle typographique commune — remplace les tailles ad-hoc dispersées
+// dans chaque écran pour garder une hiérarchie cohérente.
+export const typography = {
+  displayTitle: { fontSize: 34, fontWeight: "800" as const },
+  screenTitle: { fontSize: 24, fontWeight: "800" as const },
+  sectionTitle: { fontSize: 22, fontWeight: "700" as const },
+  cardTitle: { fontSize: 18, fontWeight: "700" as const },
+  body: { fontSize: 16, fontWeight: "400" as const },
+  bodyStrong: { fontSize: 16, fontWeight: "600" as const },
+  caption: { fontSize: 13, fontWeight: "500" as const },
+  captionStrong: { fontSize: 13, fontWeight: "700" as const },
+};

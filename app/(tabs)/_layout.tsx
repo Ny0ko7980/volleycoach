@@ -1,13 +1,14 @@
 import { Tabs } from "expo-router";
-import { Text } from "react-native";
+import { StyleSheet } from "react-native";
+import { Home, Dumbbell, ChartNoAxesColumn, Bot, User } from "lucide-react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
 
-const ICONS: Record<string, string> = {
-  index: "🏠",
-  training: "🏋️",
-  stats: "📊",
-  coach: "🤖",
-  profile: "👤",
+const ICONS: Record<string, typeof Home> = {
+  index: Home,
+  training: Dumbbell,
+  stats: ChartNoAxesColumn,
+  coach: Bot,
+  profile: User,
 };
 
 const LABELS: Record<string, string> = {
@@ -27,9 +28,19 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textMuted,
-        tabBarStyle: { backgroundColor: theme.surface, borderTopColor: theme.border },
+        tabBarStyle: {
+          backgroundColor: theme.tabBarBackground,
+          borderTopColor: theme.border,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          height: 60,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
         tabBarLabel: LABELS[route.name] ?? route.name,
-        tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>{ICONS[route.name] ?? "•"}</Text>,
+        tabBarIcon: ({ color, size }) => {
+          const Icon = ICONS[route.name];
+          return Icon ? <Icon color={color} size={size ?? 22} /> : null;
+        },
       })}
     >
       <Tabs.Screen name="index" />

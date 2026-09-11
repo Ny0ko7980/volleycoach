@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { ChartNoAxesColumn } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { fetchStatistics } from "@/services/statisticsService";
 import { STAT_CATEGORIES, STAT_METRICS } from "@/constants/positions";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 import type { StatCategory, Statistic } from "@/types/database";
 
 export default function StatisticsScreen() {
@@ -61,11 +62,11 @@ export default function StatisticsScreen() {
         <Button label="+ Ajouter" onPress={() => router.push("/(tabs)/stats/add")} fullWidth={false} />
       </View>
 
-      <Button label="📈 Voir ma progression" variant="outline" onPress={() => router.push("/(tabs)/stats/progress")} />
+      <Button label="Voir ma progression" variant="outline" onPress={() => router.push("/(tabs)/stats/progress")} />
 
       {totalEntries === 0 ? (
         <EmptyState
-          icon="📊"
+          icon={<ChartNoAxesColumn size={26} color={theme.textMuted} />}
           title="Aucune statistique enregistrée"
           description="Ajoute tes premières statistiques après une séance ou un match."
           actionLabel="Ajouter une statistique"
@@ -109,7 +110,7 @@ function metricLabel(category: StatCategory, metricKey: string): string {
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: spacing.sm, marginBottom: spacing.md },
-  title: { fontSize: 24, fontWeight: "800" },
+  title: typography.screenTitle,
   categoryTitle: { fontSize: 16, fontWeight: "700", marginBottom: spacing.md },
   chartWrap: { marginBottom: spacing.md },
 });

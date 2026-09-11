@@ -17,7 +17,7 @@ export function Button({ label, onPress, variant = "primary", loading, disabled,
 
   const backgrounds: Record<string, string> = {
     primary: theme.primary,
-    secondary: theme.secondary,
+    secondary: theme.surfaceAlt,
     outline: "transparent",
     ghost: "transparent",
   };
@@ -39,8 +39,8 @@ export function Button({ label, onPress, variant = "primary", loading, disabled,
         fullWidth && styles.fullWidth,
         {
           backgroundColor: backgrounds[variant],
-          borderWidth: variant === "outline" ? 1.5 : 0,
-          borderColor: theme.primary,
+          borderWidth: variant === "outline" ? 1 : 0,
+          borderColor: theme.border,
           opacity: pressed ? 0.85 : isDisabled ? 0.5 : 1,
         },
       ]}
@@ -56,8 +56,8 @@ export function Button({ label, onPress, variant = "primary", loading, disabled,
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 52,
-    borderRadius: radius.md,
+    minHeight: 54,
+    borderRadius: radius.xl,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.lg,

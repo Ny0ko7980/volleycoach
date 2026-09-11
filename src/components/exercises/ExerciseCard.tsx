@@ -31,7 +31,7 @@ export function ExerciseCard({ exercise, onPress }: { exercise: Exercise; onPres
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderRadius: 16, padding: spacing.md, marginBottom: spacing.sm },
+  card: { borderWidth: 1, borderRadius: 20, padding: spacing.md, marginBottom: spacing.sm },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   name: { fontSize: 15, fontWeight: "700", flex: 1, marginRight: spacing.sm },
   description: { fontSize: 13, marginTop: spacing.xs, marginBottom: spacing.sm },

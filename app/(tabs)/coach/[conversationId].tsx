@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Send } from "lucide-react-native";
 import { ChatBubble } from "@/components/chat/ChatBubble";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { useAppTheme } from "@/hooks/useAppTheme";
@@ -84,7 +85,7 @@ export default function ChatScreen() {
             multiline
           />
           <Pressable onPress={() => handleSend()} style={[styles.sendButton, { backgroundColor: theme.primary }]} disabled={sending}>
-            <Text style={styles.sendLabel}>➤</Text>
+            <Send size={18} color="#FFFFFF" />
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -100,5 +101,4 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: "row", alignItems: "flex-end", padding: spacing.md, borderTopWidth: 1, gap: spacing.sm },
   input: { flex: 1, borderRadius: 20, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, maxHeight: 100, fontSize: 15 },
   sendButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  sendLabel: { color: "#FFFFFF", fontSize: 18, fontWeight: "800" },
 });

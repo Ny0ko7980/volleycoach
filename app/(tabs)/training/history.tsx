@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Text, View, StyleSheet } from "react-native";
+import { History as HistoryIcon } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -8,7 +9,7 @@ import { ErrorView } from "@/components/ui/ErrorView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { fetchSessionHistory } from "@/services/workoutService";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 import type { WorkoutSession } from "@/types/database";
 
 const STATUS_LABEL: Record<string, { label: string; tone: "success" | "primary" | "neutral" }> = {
@@ -43,7 +44,11 @@ export default function TrainingHistoryScreen() {
       <Text style={[styles.title, { color: theme.text }]}>Journal d'entraînement</Text>
 
       {sessions.length === 0 ? (
-        <EmptyState icon="🗓️" title="Aucune séance enregistrée" description="Ton historique apparaîtra ici après ta première séance." />
+        <EmptyState
+          icon={<HistoryIcon size={26} color={theme.textMuted} />}
+          title="Aucune séance enregistrée"
+          description="Ton historique apparaîtra ici après ta première séance."
+        />
       ) : (
         sessions.map((s) => {
           const status = STATUS_LABEL[s.status] ?? { label: s.status, tone: "neutral" as const };
@@ -76,6 +81,6 @@ export default function TrainingHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 22, fontWeight: "800", marginTop: spacing.sm, marginBottom: spacing.lg },
+  title: { ...typography.screenTitle, marginTop: spacing.sm, marginBottom: spacing.lg },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
 });

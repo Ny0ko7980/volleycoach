@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 
 interface Props {
   title: string;
@@ -28,8 +28,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: spacing.sm,
-    marginTop: spacing.sm,
+    marginTop: spacing.lg,
   },
-  title: { fontSize: 18, fontWeight: "800" },
+  title: typography.sectionTitle,
   action: { fontSize: 13, fontWeight: "700" },
 });

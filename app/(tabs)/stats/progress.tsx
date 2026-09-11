@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Text, View, StyleSheet } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { Target } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { CategoryScoreRow } from "@/components/charts/CategoryScoreRow";
@@ -13,7 +14,7 @@ import { fetchStatistics, computeCategoryScore } from "@/services/statisticsServ
 import { fetchGoals } from "@/services/goalsService";
 import { fetchSessionHistory } from "@/services/workoutService";
 import { STAT_CATEGORIES } from "@/constants/positions";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 import type { Goal, StatCategory, WorkoutSession } from "@/types/database";
 
 export default function ProgressScreen() {
@@ -96,7 +97,7 @@ export default function ProgressScreen() {
       <Text style={[styles.sectionTitle, { color: theme.text, marginTop: spacing.md }]}>Objectifs en cours</Text>
       {goals.length === 0 ? (
         <EmptyState
-          icon="🎯"
+          icon={<Target size={26} color={theme.textMuted} />}
           title="Aucun objectif actif"
           description="Crée un objectif pour suivre ta progression précisément."
           actionLabel="Créer un objectif"
@@ -120,7 +121,7 @@ function EvolutionBlock({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: "800", marginTop: spacing.sm, marginBottom: spacing.lg },
+  title: { ...typography.screenTitle, marginTop: spacing.sm, marginBottom: spacing.lg },
   sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: spacing.xs },
   evolutionRow: { flexDirection: "row", justifyContent: "space-around" },
   evolutionBlock: { alignItems: "center" },
