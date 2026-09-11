@@ -121,7 +121,7 @@ function EvolutionBlock({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  title: { ...typography.screenTitle, marginTop: spacing.sm, marginBottom: spacing.lg },
+  title: { ...typography.titleXL, marginTop: spacing.sm, marginBottom: spacing.lg },
   sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: spacing.xs },
   evolutionRow: { flexDirection: "row", justifyContent: "space-around" },
   evolutionBlock: { alignItems: "center" },

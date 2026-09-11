@@ -1,13 +1,14 @@
 import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Flame, Lock } from "lucide-react-native";
+import { Flame, Lock, Calendar, Clock, Trophy, Target, Settings, LogOut, Users, ShieldCheck, Pencil } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
-import { ProgressBar } from "@/components/ui/ProgressBar";
+import { ProgressRing } from "@/components/ui/ProgressRing";
+import { StatCard } from "@/components/ui/StatCard";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
@@ -15,8 +16,11 @@ import { useAuthStore } from "@/store/authStore";
 import { useProfileStore } from "@/store/profileStore";
 import { fetchMyProfile } from "@/services/profileService";
 import { fetchPlayerAchievements, fetchAllAchievements, xpToNextLevel } from "@/services/gamificationService";
-import { positionLabel, levelLabel, objectiveLabel } from "@/constants/positions";
+import { fetchSessionHistory } from "@/services/workoutService";
+import { fetchStatistics, computePersonalBest } from "@/services/statisticsService";
+import { positionLabel, levelLabel, objectiveLabel, STAT_METRICS } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
+import { formatDurationMinutes } from "@/utils/duration";
 import type { Achievement, PlayerAchievement } from "@/types/database";
 
 export default function ProfileScreen() {
@@ -28,20 +32,40 @@ export default function ProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [unlocked, setUnlocked] = useState<PlayerAchievement[]>([]);
   const [allAchievements, setAllAchievements] = useState<Achievement[]>([]);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [totalMinutes, setTotalMinutes] = useState(0);
+  const [record, setRecord] = useState<{ label: string; value: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [freshProfile, playerAchievements, achievements] = await Promise.all([
+      const [freshProfile, playerAchievements, achievements, sessions, allStats] = await Promise.all([
         fetchMyProfile(),
         fetchPlayerAchievements(),
         fetchAllAchievements(),
+        fetchSessionHistory(500),
+        fetchStatistics(),
       ]);
       if (freshProfile) setProfile(freshProfile);
       setUnlocked(playerAchievements);
       setAllAchievements(achievements);
       if (!freshProfile) setError("Profil introuvable.");
+
+      const completed = sessions.filter((s) => s.status === "completed");
+      setTotalSessions(completed.length);
+      setTotalMinutes(completed.reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0));
+
+      let best: { label: string; value: number; display: string } | null = null;
+      for (const category of ["service", "reception", "attaque", "bloc", "defense", "physique"] as const) {
+        const pb = computePersonalBest(allStats.filter((s) => s.category === category));
+        if (!pb) continue;
+        if (!best || pb.value > best.value) {
+          const metricLabel = STAT_METRICS[category].find((m) => m.key === pb.metric)?.label ?? pb.metric;
+          best = { label: metricLabel, value: pb.value, display: `${pb.value}${pb.unit ?? ""}` };
+        }
+      }
+      setRecord(best ? { label: best.label, value: best.display } : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur de chargement du profil.");
     } finally {
@@ -59,7 +83,9 @@ export default function ProfileScreen() {
   if (error || !profile) return <ErrorView message={error ?? "Profil introuvable."} onRetry={load} />;
 
   const { level, progressInLevel, xpForNext } = xpToNextLevel(profile.xp);
+  const levelPercent = (progressInLevel / xpForNext) * 100;
   const unlockedByAchievementId = new Map(unlocked.map((u) => [u.achievement_id, u]));
+  const mainObjective = profile.goals[0];
 
   return (
     <ScreenContainer onRefresh={load} refreshing={loading}>
@@ -67,31 +93,44 @@ export default function ProfileScreen() {
         <View style={[styles.avatar, { backgroundColor: theme.primaryMuted }]}>
           <Text style={[styles.avatarLabel, { color: theme.primary }]}>{profile.username.slice(0, 2).toUpperCase()}</Text>
         </View>
-        <Text style={[styles.name, { color: theme.text }]}>{profile.username}</Text>
+        <Text style={[typography.titleL, { color: theme.text }]}>{profile.username}</Text>
         <View style={styles.badgeRow}>
           <Badge label={positionLabel(profile.position)} tone="primary" />
           <Badge label={levelLabel(profile.level)} />
+          {profile.height_cm ? <Badge label={`${profile.height_cm} cm`} tone="neutral" /> : null}
           {profile.club ? <Badge label={profile.club} tone="neutral" /> : null}
         </View>
       </View>
 
-      <Card>
-        <View style={styles.levelRow}>
-          <Text style={{ color: theme.text, fontWeight: "700" }}>Niveau {level}</Text>
-          <Text style={{ color: theme.textMuted, fontSize: 12 }}>
-            {progressInLevel}/{xpForNext} XP
+      <Card style={styles.levelCard}>
+        <ProgressRing percent={levelPercent} size={68} strokeWidth={7} valueLabel={`${level}`} label="niveau" />
+        <View style={styles.levelInfo}>
+          <Text style={[typography.bodyStrong, { color: theme.text }]}>Niveau {level}</Text>
+          <Text style={[typography.caption, { color: theme.textMuted, marginTop: 2 }]}>
+            {progressInLevel} / {xpForNext} XP avant le niveau suivant
           </Text>
-        </View>
-        <ProgressBar percent={(progressInLevel / xpForNext) * 100} />
-        <View style={styles.quickStats}>
-          <QuickStat icon={<Flame size={14} color={theme.primary} />} label="Série" value={`${profile.streak_count}`} />
-          <QuickStat label="Record série" value={`${profile.longest_streak}`} />
-          <QuickStat label="XP total" value={`${profile.xp}`} />
         </View>
       </Card>
 
+      <View style={styles.statGrid}>
+        <StatCard icon={<Target size={16} color={theme.primary} />} label="Objectif principal" value={mainObjective ? objectiveLabel(mainObjective).replace("Améliorer ", "") : "—"} />
+        <StatCard icon={<Calendar size={16} color={theme.primary} />} label="Séances" value={`${totalSessions}`} />
+        <StatCard icon={<Clock size={16} color={theme.primary} />} label="Temps d'entraînement" value={formatDurationMinutes(totalMinutes)} />
+        <StatCard icon={<Flame size={16} color={theme.primary} />} label="Série" value={`${profile.streak_count} j`} />
+      </View>
+
+      {record ? (
+        <Card style={styles.recordRow}>
+          <Trophy size={18} color={theme.primary} />
+          <View style={{ flex: 1, marginLeft: spacing.sm }}>
+            <Text style={[typography.bodyStrong, { color: theme.text }]}>{record.value}</Text>
+            <Text style={[typography.caption, { color: theme.textMuted }]}>Record personnel · {record.label}</Text>
+          </View>
+        </Card>
+      ) : null}
+
       <Card>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Objectifs</Text>
+        <Text style={[typography.bodySecondaryStrong, { color: theme.text, marginBottom: spacing.sm }]}>Objectifs</Text>
         <View style={styles.chipRow}>
           {profile.goals.length === 0 ? (
             <Text style={{ color: theme.textMuted }}>Aucun objectif défini.</Text>
@@ -105,7 +144,7 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+        <Text style={[typography.bodySecondaryStrong, { color: theme.text, marginBottom: spacing.sm }]}>
           Badges ({unlocked.length}/{allAchievements.length})
         </Text>
         <View style={styles.achievementsGrid}>
@@ -144,27 +183,16 @@ export default function ProfileScreen() {
         </View>
       </Card>
 
-      <Button label="Modifier mon profil" variant="outline" onPress={() => router.push("/(tabs)/profile/edit")} />
-      <Button label="Mon équipe" variant="outline" onPress={() => router.push("/(tabs)/profile/team")} />
+      <Button label="Modifier mon profil" variant="outline" icon={<Pencil size={16} color={theme.primary} />} onPress={() => router.push("/(tabs)/profile/edit")} />
+      <Button label="Mon équipe" variant="outline" icon={<Users size={16} color={theme.primary} />} onPress={() => router.push("/(tabs)/profile/team")} />
       {profile.role === "admin" ? (
-        <Button label="Administration" variant="outline" onPress={() => router.push("/(tabs)/profile/admin")} />
+        <Button label="Administration" variant="outline" icon={<ShieldCheck size={16} color={theme.primary} />} onPress={() => router.push("/(tabs)/profile/admin")} />
       ) : null}
-      <Button label="Réglages & notifications" variant="ghost" onPress={() => router.push("/(tabs)/profile/settings")} />
-      <Button label="Se déconnecter" variant="ghost" onPress={signOut} />
-    </ScreenContainer>
-  );
-}
 
-function QuickStat({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
-  const { theme } = useAppTheme();
-  return (
-    <View style={styles.quickStatBlock}>
-      <View style={styles.quickStatValueRow}>
-        {icon}
-        <Text style={{ color: theme.text, fontWeight: "800", fontSize: 16 }}>{value}</Text>
-      </View>
-      <Text style={{ color: theme.textMuted, fontSize: 11 }}>{label}</Text>
-    </View>
+      <Text style={[typography.eyebrow, { color: theme.textFaint, marginTop: spacing.xl, marginBottom: spacing.xs }]}>PARAMÈTRES</Text>
+      <Button label="Réglages & notifications" variant="ghost" icon={<Settings size={16} color={theme.textMuted} />} onPress={() => router.push("/(tabs)/profile/settings")} />
+      <Button label="Se déconnecter" variant="ghost" icon={<LogOut size={16} color={theme.textMuted} />} onPress={signOut} />
+    </ScreenContainer>
   );
 }
 
@@ -172,14 +200,12 @@ const styles = StyleSheet.create({
   header: { alignItems: "center", marginTop: spacing.md, marginBottom: spacing.lg },
   avatar: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm },
   avatarLabel: { fontSize: 26, fontWeight: "800" },
-  name: { ...typography.sectionTitle },
   badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm, justifyContent: "center" },
   chipRow: { flexDirection: "row", flexWrap: "wrap" },
-  levelRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.sm },
-  quickStats: { flexDirection: "row", justifyContent: "space-around", marginTop: spacing.lg },
-  quickStatBlock: { alignItems: "center" },
-  quickStatValueRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: spacing.sm },
+  levelCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  levelInfo: { flex: 1 },
+  statGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.sm },
+  recordRow: { flexDirection: "row", alignItems: "center" },
   achievementsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
   achievement: { width: 76, alignItems: "center" },
   achievementIconWrap: {

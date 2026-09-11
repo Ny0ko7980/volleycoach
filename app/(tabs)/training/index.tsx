@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { CircleCheck, Clock3, CalendarClock } from "lucide-react-native";
+import { CircleCheck, Clock3, CalendarClock, Dumbbell, ChevronRight, Play } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +11,7 @@ import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
 import { fetchTodaySession, fetchSessionHistory } from "@/services/workoutService";
-import { spacing, typography } from "@/constants/theme";
+import { spacing, typography, radius } from "@/constants/theme";
 import type { WorkoutSession } from "@/types/database";
 
 export default function TrainingHomeScreen() {
@@ -48,34 +48,52 @@ export default function TrainingHomeScreen() {
 
   return (
     <ScreenContainer onRefresh={load} refreshing={loading}>
-      <Text style={[styles.title, { color: theme.text }]}>Entraînement</Text>
+      <Text style={[typography.titleXL, styles.title, { color: theme.text }]}>Entraînement</Text>
 
       <Card>
-        <Text style={{ color: theme.text, fontWeight: "700", marginBottom: spacing.sm }}>
-          {session ? "Reprendre ma séance" : "Générer une séance personnalisée"}
-        </Text>
-        <Text style={{ color: theme.textMuted, marginBottom: spacing.md }}>
-          {session
-            ? "Une séance est déjà en cours ou planifiée aujourd'hui."
-            : "Choisis un objectif et une durée, on s'occupe du reste."}
-        </Text>
-        <Button
-          label={session ? "Continuer la séance" : "Créer une séance"}
-          onPress={() =>
-            session ? router.push(`/(tabs)/training/session/${session.id}`) : router.push("/(tabs)/training/generate")
-          }
-        />
-      </Card>
-
-      <SectionHeader title="Bibliothèque d'exercices" action="Voir tout" onAction={() => router.push("/(tabs)/training/exercises")} />
-      <Card>
-        <Text style={{ color: theme.textMuted }}>
-          Filtre par poste{profile ? ` (${profile.position})` : ""}, niveau, objectif, durée et matériel.
-        </Text>
+        <View style={styles.heroRow}>
+          <View style={[styles.heroIcon, { backgroundColor: theme.primaryMuted }]}>
+            <Play size={18} color={theme.primary} fill={theme.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[typography.bodyStrong, { color: theme.text }]}>
+              {session ? "Reprendre ma séance" : "Générer une séance personnalisée"}
+            </Text>
+            <Text style={[typography.bodySecondary, { color: theme.textMuted, marginTop: 2 }]}>
+              {session
+                ? "Une séance est déjà en cours ou planifiée aujourd'hui."
+                : "Choisis un objectif et une durée, on s'occupe du reste."}
+            </Text>
+          </View>
+        </View>
         <View style={{ marginTop: spacing.md }}>
-          <Button label="Parcourir les exercices" variant="outline" onPress={() => router.push("/(tabs)/training/exercises")} />
+          <Button
+            label={session ? "Continuer la séance" : "Créer une séance"}
+            onPress={() =>
+              session ? router.push(`/(tabs)/training/session/${session.id}`) : router.push("/(tabs)/training/generate")
+            }
+          />
         </View>
       </Card>
+
+      <Pressable
+        onPress={() => router.push("/(tabs)/training/exercises")}
+        style={({ pressed }) => [
+          styles.libraryCard,
+          { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.9 : 1 },
+        ]}
+      >
+        <View style={[styles.libraryIcon, { backgroundColor: theme.surfaceAlt }]}>
+          <Dumbbell size={18} color={theme.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[typography.bodyStrong, { color: theme.text }]}>Bibliothèque d'exercices</Text>
+          <Text style={[typography.caption, { color: theme.textMuted, marginTop: 2 }]}>
+            Recherche par catégorie{profile ? `, adaptée au poste ${profile.position}` : ""}
+          </Text>
+        </View>
+        <ChevronRight size={18} color={theme.textMuted} />
+      </Pressable>
 
       <SectionHeader title="Journal d'entraînement" action="Historique complet" onAction={() => router.push("/(tabs)/training/history")} />
       {recent.length === 0 ? (
@@ -86,16 +104,16 @@ export default function TrainingHomeScreen() {
         recent.map((s) => (
           <Card key={s.id}>
             <View style={styles.historyRow}>
-              <Text style={{ color: theme.text, fontWeight: "600", flex: 1 }} numberOfLines={1}>
+              <Text style={[typography.bodyStrong, { color: theme.text, flex: 1 }]} numberOfLines={1}>
                 {s.workout?.title ?? "Séance"}
               </Text>
-              <Text style={{ color: theme.textMuted, fontSize: 12 }}>
+              <Text style={[typography.caption, { color: theme.textMuted }]}>
                 {new Date(s.created_at).toLocaleDateString("fr-FR")}
               </Text>
             </View>
             <View style={styles.statusRow}>
               <SessionStatusIcon status={s.status} color={theme.textMuted} />
-              <Text style={{ color: theme.textMuted, fontSize: 12, marginLeft: spacing.xs }}>
+              <Text style={[typography.caption, { color: theme.textMuted, marginLeft: spacing.xs }]}>
                 {s.status === "completed" ? "Terminée" : s.status === "in_progress" ? "En cours" : "Planifiée"}
               </Text>
             </View>
@@ -113,7 +131,19 @@ function SessionStatusIcon({ status, color }: { status: string; color: string })
 }
 
 const styles = StyleSheet.create({
-  title: { ...typography.displayTitle, fontSize: 28, marginTop: spacing.sm, marginBottom: spacing.lg },
+  title: { marginTop: spacing.sm, marginBottom: spacing.lg },
+  heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  heroIcon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  libraryCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  libraryIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   historyRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   statusRow: { flexDirection: "row", alignItems: "center", marginTop: spacing.xs },
 });

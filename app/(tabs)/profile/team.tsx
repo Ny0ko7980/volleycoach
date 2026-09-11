@@ -139,7 +139,7 @@ function CoachView({ team, roster, onChanged }: { team: Team; roster: TeamMember
                   <View style={styles.badgeRow}>
                     <Badge label={positionLabel(p.position)} tone="primary" />
                     <Badge label={levelLabel(p.level)} />
-                    <Badge label={`🔥 ${p.streak_count}`} tone={p.streak_count > 0 ? "success" : "neutral"} />
+                    <Badge label={`${p.streak_count} j`} tone={p.streak_count > 0 ? "success" : "neutral"} />
                   </View>
                 </View>
                 <Text onPress={() => handleRemove(p.id, p.username)} style={{ color: theme.danger, fontSize: 12 }}>

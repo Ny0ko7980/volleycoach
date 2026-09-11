@@ -61,6 +61,27 @@ export interface CategoryScore {
  * dernières valeurs vs les 5 précédentes). C'est un indicateur motivationnel,
  * pas une mesure scientifique — affiché comme tel dans l'UI.
  */
+export interface PersonalBest {
+  metric: string;
+  value: number;
+  unit: string | null;
+  firstValue: number;
+}
+
+/**
+ * Retourne, pour un ensemble de mesures d'un même métrique, la meilleure
+ * valeur enregistrée (on considère qu'une valeur plus haute est toujours
+ * meilleure pour les métriques volley suivies ici — détente, précision,
+ * réussite au service, etc.) ainsi que la toute première valeur pour
+ * calculer un delta "depuis le début".
+ */
+export function computePersonalBest(stats: Statistic[]): PersonalBest | null {
+  if (stats.length === 0) return null;
+  const sorted = [...stats].sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime());
+  const best = sorted.reduce((max, s) => (s.value > max.value ? s : max), sorted[0]!);
+  return { metric: best.metric, value: best.value, unit: best.unit, firstValue: sorted[0]!.value };
+}
+
 export function computeCategoryScore(stats: Statistic[]): number {
   if (stats.length === 0) return 0;
   const sorted = [...stats].sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime());

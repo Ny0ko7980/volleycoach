@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Text, View, StyleSheet } from "react-native";
 import { Link, useRouter } from "expo-router";
+import { Volleyball } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 
 export default function LoginScreen() {
   const { theme } = useAppTheme();
@@ -35,9 +36,11 @@ export default function LoginScreen() {
   return (
     <ScreenContainer>
       <View style={styles.header}>
-        <Text style={styles.logo}>🏐</Text>
-        <Text style={[styles.title, { color: theme.text }]}>Coach Volley</Text>
-        <Text style={[styles.subtitle, { color: theme.textMuted }]}>Ton coach de volley-ball dans ta poche</Text>
+        <View style={[styles.logoWrap, { backgroundColor: theme.primaryMuted }]}>
+          <Volleyball size={28} color={theme.primary} />
+        </View>
+        <Text style={[typography.titleXL, { color: theme.text }]}>Coach Volley</Text>
+        <Text style={[typography.bodySecondary, styles.subtitle, { color: theme.textMuted }]}>Ton coach de volley-ball dans ta poche</Text>
       </View>
 
       <TextField
@@ -81,9 +84,8 @@ function traduireErreur(message: string): string {
 
 const styles = StyleSheet.create({
   header: { alignItems: "center", marginTop: spacing.xxl, marginBottom: spacing.xxl },
-  logo: { fontSize: 56, marginBottom: spacing.sm },
-  title: { fontSize: 26, fontWeight: "800" },
-  subtitle: { fontSize: 14, marginTop: spacing.xs },
+  logoWrap: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm },
+  subtitle: { marginTop: spacing.xs },
   errorText: { marginBottom: spacing.md, fontSize: 13 },
   link: { textAlign: "center", marginTop: spacing.lg, fontSize: 13 },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: spacing.xl },

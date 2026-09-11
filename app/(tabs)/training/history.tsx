@@ -81,6 +81,6 @@ export default function TrainingHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { ...typography.screenTitle, marginTop: spacing.sm, marginBottom: spacing.lg },
+  title: { ...typography.titleXL, marginTop: spacing.sm, marginBottom: spacing.lg },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
 });

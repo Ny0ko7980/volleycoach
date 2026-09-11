@@ -28,8 +28,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: spacing.sm,
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
   },
-  title: typography.sectionTitle,
+  title: typography.titleL,
   action: { fontSize: 13, fontWeight: "700" },
 });

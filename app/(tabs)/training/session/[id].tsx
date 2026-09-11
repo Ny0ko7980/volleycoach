@@ -2,9 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Lightbulb } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
+import { Lightbulb, X } from "lucide-react-native";
 import { Button } from "@/components/ui/Button";
-import { ProgressBar } from "@/components/ui/ProgressBar";
+import { IconButton } from "@/components/ui/IconButton";
+import { ProgressRing } from "@/components/ui/ProgressRing";
+import { WorkoutProgress } from "@/components/workouts/WorkoutProgress";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
@@ -18,7 +21,7 @@ import {
 import { applySessionRewards } from "@/services/gamificationService";
 import { notifyAchievementUnlocked } from "@/services/notificationsService";
 import { queueMutation } from "@/services/offlineQueue";
-import { spacing } from "@/constants/theme";
+import { radius, spacing, typography } from "@/constants/theme";
 import type { Workout, WorkoutExercise } from "@/types/database";
 
 type Phase = "exercise" | "rest";
@@ -36,6 +39,7 @@ export default function TrainingModeScreen() {
   const [setNumber, setSetNumber] = useState(1);
   const [phase, setPhase] = useState<Phase>("exercise");
   const [restRemaining, setRestRemaining] = useState(0);
+  const [restTotal, setRestTotal] = useState(1);
   const [paused, setPaused] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const startedAt = useRef(Date.now());
@@ -70,6 +74,7 @@ export default function TrainingModeScreen() {
     if (phase !== "rest" || paused) return;
     if (restRemaining <= 0) {
       setPhase("exercise");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       return;
     }
     const t = setTimeout(() => setRestRemaining((r) => r - 1), 1000);
@@ -88,11 +93,13 @@ export default function TrainingModeScreen() {
 
   async function handleNext() {
     if (!current) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
     if (phase === "exercise") {
       if (!isLastSet) {
         setSetNumber((s) => s + 1);
         setPhase("rest");
         setRestRemaining(current.rest_seconds);
+        setRestTotal(current.rest_seconds || 1);
         return;
       }
       if (isLast) {
@@ -103,6 +110,7 @@ export default function TrainingModeScreen() {
       setSetNumber(1);
       setPhase("rest");
       setRestRemaining(current.rest_seconds);
+      setRestTotal(current.rest_seconds || 1);
       if (sessionId) await updateSessionProgress(sessionId, index + 1).catch(() => undefined);
     } else {
       setPhase("exercise");
@@ -134,11 +142,12 @@ export default function TrainingModeScreen() {
       });
       const { profile: updatedProfile, newAchievements } = await applySessionRewards(profile);
       setProfile(updatedProfile);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       for (const achievement of newAchievements) {
         await notifyAchievementUnlocked(achievement.name, achievement.icon);
       }
       Alert.alert(
-        "Séance terminée ! 🎉",
+        "Séance terminée !",
         newAchievements.length > 0
           ? `Bravo, tu as débloqué: ${newAchievements.map((a) => a.name).join(", ")}`
           : "Bravo, continue comme ça !",
@@ -168,38 +177,60 @@ export default function TrainingModeScreen() {
     ]);
   }
 
-  const globalProgress = ((index + (setNumber - 1) / current.sets) / exercises.length) * 100;
+  const restPercent = restTotal > 0 ? ((restTotal - restRemaining) / restTotal) * 100 : 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={styles.topBar}>
+        <IconButton
+          icon={<X size={18} color={theme.textMuted} />}
+          accessibilityLabel="Quitter le mode entraînement"
+          onPress={handleFinishEarly}
+        />
+        <View style={{ flex: 1 }} />
+      </View>
+
       <View style={styles.header}>
-        <ProgressBar percent={globalProgress} />
-        <Text style={[styles.progressLabel, { color: theme.textMuted }]}>
-          Exercice {index + 1} / {exercises.length}
-        </Text>
+        <WorkoutProgress current={index + 1} total={exercises.length} />
       </View>
 
       <View style={styles.body}>
         {phase === "rest" ? (
           <View style={styles.center}>
-            <Text style={[styles.restLabel, { color: theme.textMuted }]}>RÉCUPÉRATION</Text>
-            <Text style={[styles.timer, { color: theme.primary }]}>{restRemaining}s</Text>
-            <Button label={paused ? "Reprendre" : "Pause"} variant="outline" onPress={() => setPaused((p) => !p)} />
+            <Text style={[typography.eyebrow, { color: theme.textMuted, marginBottom: spacing.lg }]}>RÉCUPÉRATION</Text>
+            <ProgressRing
+              percent={restPercent}
+              size={180}
+              strokeWidth={12}
+              color={theme.primary}
+              valueLabel={`${restRemaining}s`}
+              label="restant"
+            />
+            <View style={{ marginTop: spacing.xl, minWidth: 160 }}>
+              <Button label={paused ? "Reprendre" : "Pause"} variant="secondary" onPress={() => setPaused((p) => !p)} />
+            </View>
           </View>
         ) : (
-          <>
-            <Text style={[styles.exerciseName, { color: theme.text }]}>{current.exercise?.name}</Text>
-            <Text style={[styles.setInfo, { color: theme.primary }]}>
+          <View style={styles.center}>
+            <View style={styles.exerciseNumberRow}>
+              <View style={[styles.exerciseNumberBadge, { backgroundColor: theme.primaryMuted }]}>
+                <Text style={[typography.bodyStrong, { color: theme.primary }]}>{index + 1}</Text>
+              </View>
+            </View>
+            <Text style={[typography.titleXL, styles.exerciseName, { color: theme.text }]}>{current.exercise?.name}</Text>
+            <Text style={[typography.titleM, styles.setInfo, { color: theme.primary }]}>
               Série {setNumber} / {current.sets} · {current.reps}
             </Text>
-            <Text style={[styles.instructions, { color: theme.textMuted }]}>{current.exercise?.instructions}</Text>
+            <Text style={[typography.body, styles.instructions, { color: theme.textMuted }]}>
+              {current.exercise?.instructions}
+            </Text>
             {current.exercise?.tips ? (
-              <View style={styles.tipRow}>
+              <View style={[styles.tipRow, { backgroundColor: theme.surfaceAlt }]}>
                 <Lightbulb size={15} color={theme.warning} />
-                <Text style={[styles.tip, { color: theme.text }]}>{current.exercise.tips}</Text>
+                <Text style={[typography.bodySecondary, styles.tip, { color: theme.text }]}>{current.exercise.tips}</Text>
               </View>
             ) : null}
-          </>
+          </View>
         )}
       </View>
 
@@ -216,26 +247,33 @@ export default function TrainingModeScreen() {
             />
           </View>
         </View>
-        <Button label="Terminer la séance maintenant" variant="ghost" onPress={handleFinishEarly} />
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: spacing.lg },
-  header: { marginBottom: spacing.lg },
-  progressLabel: { fontSize: 12, marginTop: spacing.xs, textAlign: "center" },
+  container: { flex: 1, paddingHorizontal: spacing.lg },
+  topBar: { flexDirection: "row", alignItems: "center", paddingTop: spacing.xs },
+  header: { marginTop: spacing.sm, marginBottom: spacing.lg },
   body: { flex: 1, justifyContent: "center" },
   center: { alignItems: "center" },
-  exerciseName: { fontSize: 28, fontWeight: "800", textAlign: "center", marginBottom: spacing.sm },
-  setInfo: { fontSize: 18, fontWeight: "700", textAlign: "center", marginBottom: spacing.lg },
-  instructions: { fontSize: 16, lineHeight: 24, textAlign: "center" },
-  tipRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.xs, marginTop: spacing.lg, paddingHorizontal: spacing.md },
-  tip: { flex: 1, fontSize: 14, fontStyle: "italic" },
-  restLabel: { fontSize: 14, fontWeight: "700", letterSpacing: 1, marginBottom: spacing.md },
-  timer: { fontSize: 64, fontWeight: "800", marginBottom: spacing.xl },
-  controls: { gap: spacing.sm },
+  exerciseNumberRow: { marginBottom: spacing.md },
+  exerciseNumberBadge: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  exerciseName: { textAlign: "center", marginBottom: spacing.xs },
+  setInfo: { textAlign: "center", marginBottom: spacing.lg },
+  instructions: { textAlign: "center", lineHeight: 22, paddingHorizontal: spacing.sm },
+  tipRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.xs,
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    width: "100%",
+  },
+  tip: { flex: 1 },
+  controls: { gap: spacing.sm, paddingBottom: spacing.sm },
   controlRow: { flexDirection: "row", gap: spacing.md },
   controlButton: { flex: 1 },
 });

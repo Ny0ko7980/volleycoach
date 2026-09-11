@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { addStatistic } from "@/services/statisticsService";
 import { STAT_CATEGORIES, STAT_METRICS } from "@/constants/positions";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 import type { StatCategory } from "@/types/database";
 
 export default function AddStatisticScreen() {
@@ -52,7 +52,7 @@ export default function AddStatisticScreen() {
       <Text style={[styles.label, { color: theme.textMuted }]}>Catégorie</Text>
       <View style={styles.wrap}>
         {STAT_CATEGORIES.map((c) => (
-          <Chip key={c.value} label={`${c.icon} ${c.label}`} selected={category === c.value} onPress={() => handleCategoryChange(c.value)} />
+          <Chip key={c.value} label={c.label} selected={category === c.value} onPress={() => handleCategoryChange(c.value)} />
         ))}
       </View>
 
@@ -74,7 +74,7 @@ export default function AddStatisticScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 22, fontWeight: "800", marginTop: spacing.sm, marginBottom: spacing.lg },
+  title: { ...typography.titleXL, marginTop: spacing.sm, marginBottom: spacing.lg },
   label: { fontSize: 13, fontWeight: "700", marginBottom: spacing.sm },
   wrap: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.md },
 });

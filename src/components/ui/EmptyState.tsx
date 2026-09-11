@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Inbox } from "lucide-react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { Button } from "./Button";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 
 interface Props {
   icon?: ReactNode;
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: spacing.md,
   },
-  title: { fontSize: 17, fontWeight: "700", textAlign: "center" },
-  description: { fontSize: 14, textAlign: "center", marginTop: spacing.xs },
+  title: { ...typography.titleM, textAlign: "center" },
+  description: { ...typography.bodySecondary, textAlign: "center", marginTop: spacing.xs },
   action: { marginTop: spacing.lg, minWidth: 200 },
 });

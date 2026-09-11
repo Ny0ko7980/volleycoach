@@ -2,6 +2,7 @@ import { PropsWithChildren } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { spacing } from "@/constants/theme";
 
 interface Props extends PropsWithChildren {
   scroll?: boolean;
@@ -39,5 +40,5 @@ export function ScreenContainer({ children, scroll = true, refreshing, onRefresh
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  padded: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
+  padded: { paddingHorizontal: spacing.screenPadding, paddingTop: spacing.lg, paddingBottom: 40 },
 });

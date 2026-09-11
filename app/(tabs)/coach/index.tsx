@@ -125,7 +125,7 @@ function truncate(text: string, max = 40): string {
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", marginTop: spacing.sm, marginBottom: spacing.lg, gap: spacing.md },
   botIcon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  title: typography.screenTitle,
+  title: typography.titleXL,
   sectionTitle: { fontSize: 15, fontWeight: "700", marginTop: spacing.xl, marginBottom: spacing.sm },
   suggestions: { gap: spacing.sm },
   suggestionChip: {

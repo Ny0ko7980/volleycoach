@@ -52,7 +52,7 @@ export default function GenerateWorkoutScreen() {
       <Text style={[styles.label, { color: theme.textMuted }]}>Objectif de la séance</Text>
       <View style={styles.wrap}>
         {OBJECTIVES.map((o) => (
-          <Chip key={o.value} label={`${o.icon} ${o.label}`} selected={objective === o.value} onPress={() => setObjective(o.value)} />
+          <Chip key={o.value} label={o.label} selected={objective === o.value} onPress={() => setObjective(o.value)} />
         ))}
       </View>
 
@@ -71,7 +71,7 @@ export default function GenerateWorkoutScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { ...typography.screenTitle, marginTop: spacing.sm, marginBottom: spacing.lg },
+  title: { ...typography.titleXL, marginTop: spacing.sm, marginBottom: spacing.lg },
   label: { fontSize: 13, fontWeight: "700", marginBottom: spacing.sm, marginTop: spacing.sm },
   wrap: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.lg },
 });

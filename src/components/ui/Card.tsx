@@ -1,19 +1,23 @@
 import { PropsWithChildren } from "react";
-import { StyleSheet, View, ViewStyle } from "react-native";
+import { StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { radius, spacing } from "@/constants/theme";
+import { radius, shadow, spacing } from "@/constants/theme";
 
 interface Props extends PropsWithChildren {
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
+  elevation?: "sm" | "md";
+  noPadding?: boolean;
 }
 
-export function Card({ children, style }: Props) {
+export function Card({ children, style, elevation = "sm", noPadding }: Props) {
   const { theme } = useAppTheme();
   return (
     <View
       style={[
         styles.card,
+        shadow[elevation],
         { backgroundColor: theme.surface, borderColor: theme.border },
+        noPadding && styles.noPadding,
         style,
       ]}
     >
@@ -28,10 +32,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
-    elevation: 2,
   },
+  noPadding: { padding: 0 },
 });

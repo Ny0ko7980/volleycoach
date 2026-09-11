@@ -1,9 +1,10 @@
 import { StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { Volleyball } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Button } from "@/components/ui/Button";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { spacing } from "@/constants/theme";
+import { spacing, typography } from "@/constants/theme";
 
 export default function WelcomeScreen() {
   const { theme } = useAppTheme();
@@ -12,9 +13,11 @@ export default function WelcomeScreen() {
   return (
     <ScreenContainer>
       <View style={styles.container}>
-        <Text style={styles.emoji}>🏐</Text>
-        <Text style={[styles.title, { color: theme.text }]}>Bienvenue sur Coach Volley</Text>
-        <Text style={[styles.subtitle, { color: theme.textMuted }]}>
+        <View style={[styles.logoWrap, { backgroundColor: theme.primaryMuted }]}>
+          <Volleyball size={36} color={theme.primary} />
+        </View>
+        <Text style={[typography.titleXL, styles.title, { color: theme.text }]}>Bienvenue sur Coach Volley</Text>
+        <Text style={[typography.body, styles.subtitle, { color: theme.textMuted }]}>
           En 4 étapes rapides, on personnalise ton expérience: poste, niveau et objectifs pour te proposer les bons
           exercices dès aujourd'hui.
         </Text>
@@ -26,7 +29,7 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   container: { alignItems: "center", marginTop: spacing.xxl, marginBottom: spacing.xxl },
-  emoji: { fontSize: 64, marginBottom: spacing.lg },
-  title: { fontSize: 26, fontWeight: "800", textAlign: "center" },
-  subtitle: { fontSize: 15, textAlign: "center", marginTop: spacing.md, lineHeight: 22 },
+  logoWrap: { width: 76, height: 76, borderRadius: 38, alignItems: "center", justifyContent: "center", marginBottom: spacing.lg },
+  title: { textAlign: "center" },
+  subtitle: { textAlign: "center", marginTop: spacing.md, lineHeight: 22 },
 });

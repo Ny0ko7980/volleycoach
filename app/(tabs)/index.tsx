@@ -1,23 +1,26 @@
 import { useCallback, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Settings, Flame, TrendingUp, Zap } from "lucide-react-native";
+import { Settings, Flame, TrendingUp, Calendar, Target } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
-import { ProgressBar } from "@/components/ui/ProgressBar";
+import { IconButton } from "@/components/ui/IconButton";
+import { StatCard } from "@/components/ui/StatCard";
+import { ProgressRing } from "@/components/ui/ProgressRing";
+import { Button } from "@/components/ui/Button";
 import { WorkoutCard } from "@/components/workouts/WorkoutCard";
-import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
+import { SkeletonCard, Skeleton } from "@/components/ui/Skeleton";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
 import { fetchMyProfile } from "@/services/profileService";
-import { generateWorkout, fetchTodaySession, startWorkoutSession } from "@/services/workoutService";
+import { generateWorkout, fetchTodaySession, startWorkoutSession, fetchSessionHistory } from "@/services/workoutService";
 import { fetchStatistics, computeCategoryScore } from "@/services/statisticsService";
-import { xpToNextLevel } from "@/services/gamificationService";
-import { objectiveLabel } from "@/constants/positions";
+import { fetchGoals, goalProgressPercent } from "@/services/goalsService";
+import { positionLabel, levelLabel } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
-import type { StatCategory, Workout, WorkoutExercise, WorkoutSession } from "@/types/database";
-import { STAT_CATEGORIES } from "@/constants/positions";
+import { formatDurationMinutes, greetingForHour, weeklySessionTarget } from "@/utils/duration";
+import type { Goal, StatCategory, Workout, WorkoutExercise, WorkoutSession } from "@/types/database";
 
 export default function DashboardScreen() {
   const { theme } = useAppTheme();
@@ -29,7 +32,10 @@ export default function DashboardScreen() {
   const [todaySession, setTodaySession] = useState<WorkoutSession | null>(null);
   const [todayWorkout, setTodayWorkout] = useState<(Workout & { exercises: WorkoutExercise[] }) | null>(null);
   const [starting, setStarting] = useState(false);
-  const [monthlyTrend, setMonthlyTrend] = useState<number>(0);
+  const [weeklyTrend, setWeeklyTrend] = useState<number>(0);
+  const [sessionsThisWeek, setSessionsThisWeek] = useState(0);
+  const [minutesThisWeek, setMinutesThisWeek] = useState(0);
+  const [mainGoal, setMainGoal] = useState<Goal | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,7 +61,14 @@ export default function DashboardScreen() {
       const grouped: Record<StatCategory, typeof allStats> = { service: [], reception: [], attaque: [], bloc: [], defense: [], physique: [] };
       for (const s of allStats) grouped[s.category].push(s);
       const scores = Object.values(grouped).map(computeCategoryScore).filter((s) => s > 0);
-      setMonthlyTrend(scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) - 50 : 0);
+      setWeeklyTrend(scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) - 50 : 0);
+
+      const [history, activeGoals] = await Promise.all([fetchSessionHistory(40), fetchGoals("active")]);
+      const weekAgo = Date.now() - 7 * 86_400_000;
+      const completedThisWeek = history.filter((s) => s.status === "completed" && new Date(s.created_at).getTime() >= weekAgo);
+      setSessionsThisWeek(completedThisWeek.length);
+      setMinutesThisWeek(completedThisWeek.reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0));
+      setMainGoal(activeGoals[0] ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Impossible de charger le tableau de bord.");
     } finally {
@@ -80,66 +93,47 @@ export default function DashboardScreen() {
     }
   }
 
-  if (loading) return <LoadingView label="Préparation de ton tableau de bord..." />;
+  if (loading) return <DashboardSkeleton />;
   if (error) return <ErrorView message={error} onRetry={load} />;
   if (!profile) return <ErrorView message="Profil introuvable." onRetry={load} />;
 
-  const { level, progressInLevel, xpForNext } = xpToNextLevel(profile.xp);
-  const mainGoal = profile.goals[0];
+  const target = weeklySessionTarget(profile.training_frequency);
+  const goalPercent = mainGoal ? goalProgressPercent(mainGoal) : 0;
 
   return (
     <ScreenContainer onRefresh={load} refreshing={loading}>
       <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={[styles.greeting, { color: theme.text }]}>Salut {profile.username}</Text>
-          {mainGoal ? (
-            <Text style={{ color: theme.textMuted, marginTop: 2, fontSize: 14 }}>
-              Objectif actuel : {objectiveLabel(mainGoal).toLowerCase()}
+        <View style={styles.headerLeft}>
+          <View style={[styles.avatar, { backgroundColor: theme.primaryMuted }]}>
+            <Text style={[styles.avatarLabel, { color: theme.primary }]}>{profile.username.slice(0, 2).toUpperCase()}</Text>
+          </View>
+          <View>
+            <Text style={[typography.titleXL, { color: theme.text }]}>
+              {greetingForHour()} {profile.username}
             </Text>
-          ) : null}
+            <Text style={[typography.bodySecondary, { color: theme.textMuted }]}>
+              {positionLabel(profile.position)} • {levelLabel(profile.level)}
+            </Text>
+          </View>
         </View>
-        <Pressable
+        <IconButton
+          icon={<Settings size={18} color={theme.textMuted} />}
           onPress={() => router.push("/(tabs)/profile/settings")}
-          style={[styles.settingsButton, { backgroundColor: theme.surfaceAlt }]}
-          accessibilityRole="button"
           accessibilityLabel="Réglages"
-        >
-          <Settings size={18} color={theme.textMuted} />
-        </Pressable>
+        />
       </View>
-
-      <Card>
-        <View style={styles.levelRow}>
-          <Text style={{ color: theme.text, fontWeight: "800", fontSize: 16 }}>Niveau {level}</Text>
-          <Text style={{ color: theme.textMuted, fontSize: 12 }}>
-            {progressInLevel}/{xpForNext} XP
-          </Text>
-        </View>
-        <ProgressBar percent={(progressInLevel / xpForNext) * 100} />
-
-        <View style={styles.statsRow}>
-          <StatBlock icon={<Flame size={16} color={theme.primary} />} label="Série" value={`${profile.streak_count}`} />
-          <StatBlock
-            icon={<TrendingUp size={16} color={theme.primary} />}
-            label="Progression"
-            value={`${monthlyTrend >= 0 ? "+" : ""}${monthlyTrend}%`}
-          />
-          <StatBlock icon={<Zap size={16} color={theme.primary} />} label="XP total" value={`${profile.xp}`} />
-        </View>
-      </Card>
 
       {todaySession ? (
         <Card>
-          <Text style={{ color: theme.text, fontWeight: "700", marginBottom: spacing.sm }}>Séance en cours</Text>
-          <Text style={{ color: theme.textMuted, marginBottom: spacing.md }}>
+          <Text style={[typography.bodyStrong, { color: theme.text, marginBottom: spacing.xs }]}>Séance en cours</Text>
+          <Text style={[typography.bodySecondary, { color: theme.textMuted, marginBottom: spacing.md }]}>
             Tu as une séance {todaySession.status === "in_progress" ? "en cours" : "planifiée"} aujourd'hui.
           </Text>
-          <Text
+          <Button
+            label="Reprendre la séance"
+            variant="secondary"
             onPress={() => router.push(`/(tabs)/training/session/${todaySession.id}`)}
-            style={{ color: theme.primary, fontWeight: "700" }}
-          >
-            Reprendre la séance →
-          </Text>
+          />
         </Card>
       ) : todayWorkout ? (
         <WorkoutCard
@@ -150,56 +144,98 @@ export default function DashboardScreen() {
         />
       ) : null}
 
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>Catégories</Text>
-      <View style={styles.categoryGrid}>
-        {STAT_CATEGORIES.map((c) => (
-          <Pressable
-            key={c.value}
-            onPress={() => router.push("/(tabs)/stats")}
-            style={[styles.categoryCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          >
-            <Text style={styles.categoryIcon}>{c.icon}</Text>
-            <Text style={{ color: theme.text, fontSize: 13, fontWeight: "600" }}>{c.label}</Text>
-          </Pressable>
-        ))}
+      <Text style={[typography.titleL, styles.sectionTitle, { color: theme.text }]}>Cette semaine</Text>
+      <View style={styles.statGrid}>
+        <StatCard
+          icon={<Calendar size={16} color={theme.primary} />}
+          label="Entraînements"
+          value={`${sessionsThisWeek} / ${target}`}
+        />
+        <StatCard
+          icon={<Flame size={16} color={theme.primary} />}
+          label="Série actuelle"
+          value={`${profile.streak_count} j`}
+        />
+        <StatCard
+          icon={<TrendingUp size={16} color={theme.primary} />}
+          label="Temps d'entraînement"
+          value={formatDurationMinutes(minutesThisWeek)}
+        />
+        <StatCard
+          icon={<TrendingUp size={16} color={theme.primary} />}
+          label="Progression"
+          value={`${weeklyTrend >= 0 ? "+" : ""}${weeklyTrend}%`}
+          trend={weeklyTrend}
+        />
       </View>
+
+      <Text style={[typography.titleL, styles.sectionTitle, { color: theme.text }]}>Objectif</Text>
+      {mainGoal ? (
+        <Card style={styles.goalCard}>
+          <View style={styles.goalTextBlock}>
+            <Text style={[typography.eyebrow, { color: theme.primary, marginBottom: spacing.xs }]}>OBJECTIF ACTUEL</Text>
+            <Text style={[typography.titleM, { color: theme.text }]}>{mainGoal.name}</Text>
+            <Text style={[typography.bodySecondary, { color: theme.textMuted, marginTop: 2 }]}>
+              {mainGoal.current_value}
+              {mainGoal.unit ?? ""} → {mainGoal.target_value}
+              {mainGoal.unit ?? ""}
+            </Text>
+          </View>
+          <ProgressRing percent={goalPercent} size={72} strokeWidth={8} valueLabel={`${goalPercent}%`} />
+        </Card>
+      ) : (
+        <Card style={styles.emptyGoalCard}>
+          <View style={[styles.emptyGoalIcon, { backgroundColor: theme.surfaceAlt }]}>
+            <Target size={18} color={theme.textMuted} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[typography.bodyStrong, { color: theme.text }]}>Aucun objectif actif</Text>
+            <Text style={[typography.caption, { color: theme.textMuted, marginTop: 2 }]}>
+              Définis un objectif pour suivre ta progression.
+            </Text>
+          </View>
+          <Button
+            label="Définir"
+            variant="secondary"
+            size="compact"
+            fullWidth={false}
+            onPress={() => router.push("/(tabs)/profile/goals")}
+          />
+        </Card>
+      )}
     </ScreenContainer>
   );
 }
 
-function StatBlock({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  const { theme } = useAppTheme();
+function DashboardSkeleton() {
   return (
-    <View style={styles.statBlock}>
-      <View style={styles.statValueRow}>
-        {icon}
-        <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
+    <ScreenContainer scroll={false}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Skeleton width={48} height={48} borderRadius={24} />
+          <View style={{ gap: spacing.xs }}>
+            <Skeleton width={140} height={20} />
+            <Skeleton width={100} height={14} />
+          </View>
+        </View>
+        <Skeleton width={38} height={38} borderRadius={19} />
       </View>
-      <Text style={[styles.statLabel, { color: theme.textMuted }]}>{label}</Text>
-    </View>
+      <Skeleton width="100%" height={150} borderRadius={20} style={{ marginBottom: spacing.md }} />
+      <SkeletonCard />
+      <SkeletonCard />
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginTop: spacing.sm, marginBottom: spacing.lg },
-  headerText: { flex: 1, paddingRight: spacing.md },
-  greeting: { ...typography.displayTitle, fontSize: 28 },
-  settingsButton: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
-  levelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
-  statsRow: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.lg },
-  statBlock: { alignItems: "center", flex: 1 },
-  statValueRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  statValue: { fontSize: 16, fontWeight: "800" },
-  statLabel: { fontSize: 11, marginTop: spacing.xs },
-  sectionTitle: { ...typography.sectionTitle, marginBottom: spacing.sm },
-  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.md },
-  categoryCard: {
-    width: "31%",
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  categoryIcon: { fontSize: 22 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: spacing.sm, marginBottom: spacing.lg },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: spacing.md, flex: 1, paddingRight: spacing.md },
+  avatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  avatarLabel: { fontSize: 16, fontWeight: "800" },
+  sectionTitle: { marginBottom: spacing.sm },
+  statGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  goalCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
+  goalTextBlock: { flex: 1 },
+  emptyGoalCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  emptyGoalIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
 });
