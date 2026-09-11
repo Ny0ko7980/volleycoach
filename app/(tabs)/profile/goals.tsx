@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal, Text, View, StyleSheet } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, Text, View, StyleSheet } from "react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { Button } from "@/components/ui/Button";
@@ -106,22 +106,27 @@ function NewGoalModal({ visible, onClose, onCreated }: { visible: boolean; onClo
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
-          <Text style={[styles.modalTitle, { color: theme.text }]}>Nouvel objectif</Text>
-          <View style={styles.wrap}>
-            {OBJECTIVES.map((o) => (
-              <Chip key={o.value} label={o.label} selected={category === o.value} onPress={() => setCategory(o.value)} />
-            ))}
-          </View>
-          <TextField label="Valeur actuelle" value={current} onChangeText={setCurrent} keyboardType="decimal-pad" />
-          <TextField label="Valeur cible" value={target} onChangeText={setTarget} keyboardType="decimal-pad" />
-          <TextField label="Unité (cm, %, ...)" value={unit} onChangeText={setUnit} />
-          {error ? <Text style={{ color: theme.danger, marginBottom: spacing.md }}>{error}</Text> : null}
-          <Button label="Créer l'objectif" onPress={handleCreate} loading={loading} />
-          <Button label="Annuler" variant="ghost" onPress={onClose} />
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Nouvel objectif</Text>
+            <View style={styles.wrap}>
+              {OBJECTIVES.map((o) => (
+                <Chip key={o.value} label={o.label} selected={category === o.value} onPress={() => setCategory(o.value)} />
+              ))}
+            </View>
+            <TextField label="Valeur actuelle" value={current} onChangeText={setCurrent} keyboardType="decimal-pad" />
+            <TextField label="Valeur cible" value={target} onChangeText={setTarget} keyboardType="decimal-pad" />
+            <TextField label="Unité (cm, %, ...)" value={unit} onChangeText={setUnit} />
+            {error ? <Text style={{ color: theme.danger, marginBottom: spacing.md }}>{error}</Text> : null}
+            <Button label="Créer l'objectif" onPress={handleCreate} loading={loading} />
+            <Button label="Annuler" variant="ghost" onPress={onClose} />
+          </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
