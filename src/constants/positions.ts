@@ -75,10 +75,10 @@ export const STAT_METRICS: Record<StatCategory, { key: string; label: string; un
     { key: "erreurs", label: "Erreurs", unit: "" },
   ],
   physique: [
-    { key: "detente_cm", label: "Détente", unit: "cm" },
-    { key: "vitesse_ms", label: "Vitesse (navette)", unit: "s" },
-    { key: "explosivite", label: "Explosivité (score)", unit: "/10" },
-    { key: "endurance_min", label: "Endurance", unit: "min" },
+    { key: "detente_cm", label: "Détente (saut)", unit: "cm" },
+    { key: "vitesse_ms", label: "Vitesse (aller-retour)", unit: "s" },
+    { key: "explosivite", label: "Puissance des jambes", unit: "/10" },
+    { key: "endurance_min", label: "Endurance (tenir l'effort)", unit: "min" },
   ],
 };
 

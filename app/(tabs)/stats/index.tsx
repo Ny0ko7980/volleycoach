@@ -153,8 +153,8 @@ export default function StatisticsScreen() {
           <View style={styles.statGrid}>
             <StatCard icon={<Calendar size={16} color={theme.primary} />} label="Séances" value={`${periodSessions.length}`} />
             <StatCard icon={<Clock size={16} color={theme.primary} />} label="Temps total" value={formatDurationMinutes(totalMinutes)} />
-            <StatCard icon={<Flame size={16} color={theme.primary} />} label="Série actuelle" value={`${profile?.streak_count ?? 0} j`} />
-            <StatCard icon={<Gauge size={16} color={theme.primary} />} label="Charge d'entraînement" value={`${Math.round(trainingLoad)}`} />
+            <StatCard icon={<Flame size={16} color={theme.primary} />} label="Jours de suite" value={`${profile?.streak_count ?? 0} j`} />
+            <StatCard icon={<Gauge size={16} color={theme.primary} />} label="Effort total" value={`${Math.round(trainingLoad)}`} />
           </View>
 
           {goals.length > 0 ? (
@@ -167,6 +167,9 @@ export default function StatisticsScreen() {
           ) : null}
 
           <SectionHeader title="Par catégorie" />
+          <Text style={[typography.caption, { color: theme.textMuted, marginTop: -spacing.xs, marginBottom: spacing.sm }]}>
+            Un score sur 100 pour voir en un coup d'œil où tu progresses le plus.
+          </Text>
           {STAT_CATEGORIES.map((cat) => {
             const stats = statsByCategory[cat.value];
             if (stats.length === 0) return null;

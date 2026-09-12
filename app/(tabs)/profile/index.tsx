@@ -116,7 +116,7 @@ export default function ProfileScreen() {
         <StatCard icon={<Target size={16} color={theme.primary} />} label="Objectif principal" value={mainObjective ? objectiveLabel(mainObjective).replace("Améliorer ", "") : "—"} />
         <StatCard icon={<Calendar size={16} color={theme.primary} />} label="Séances" value={`${totalSessions}`} />
         <StatCard icon={<Clock size={16} color={theme.primary} />} label="Temps d'entraînement" value={formatDurationMinutes(totalMinutes)} />
-        <StatCard icon={<Flame size={16} color={theme.primary} />} label="Série" value={`${profile.streak_count} j`} />
+        <StatCard icon={<Flame size={16} color={theme.primary} />} label="Jours de suite" value={`${profile.streak_count} j`} />
       </View>
 
       {record ? (

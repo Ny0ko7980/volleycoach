@@ -153,7 +153,7 @@ export default function DashboardScreen() {
         />
         <StatCard
           icon={<Flame size={16} color={theme.primary} />}
-          label="Série actuelle"
+          label="Jours de suite"
           value={`${profile.streak_count} j`}
         />
         <StatCard

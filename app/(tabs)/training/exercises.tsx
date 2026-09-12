@@ -112,7 +112,7 @@ export default function ExerciseLibraryScreen() {
             <Text style={[typography.caption, { color: theme.textMuted, marginBottom: spacing.xs }]}>Poste</Text>
             <View style={styles.chipRow}>
               {POSITIONS.map((p) => (
-                <Chip key={p.value} label={p.short} selected={filters.position === p.value} onPress={() => toggleFilter("position", p.value as Position)} />
+                <Chip key={p.value} label={p.label} selected={filters.position === p.value} onPress={() => toggleFilter("position", p.value as Position)} />
               ))}
             </View>
             <Text style={[typography.caption, { color: theme.textMuted, marginTop: spacing.sm, marginBottom: spacing.xs }]}>Niveau</Text>
