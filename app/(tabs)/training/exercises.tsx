@@ -6,6 +6,7 @@ import { Search, SlidersHorizontal, X } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Chip } from "@/components/ui/Chip";
 import { ExerciseCard } from "@/components/exercises/ExerciseCard";
+import { LinearProgress } from "@/components/ui/LinearProgress";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -124,6 +125,8 @@ export default function ExerciseLibraryScreen() {
           </View>
         ) : null}
       </View>
+
+      {loading ? <LinearProgress /> : null}
 
       {loading ? (
         <LoadingView />
