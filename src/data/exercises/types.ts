@@ -9,26 +9,15 @@
 // Objective) sont réutilisés tels quels plutôt que redéfinis, pour que la
 // bibliothèque reste compatible avec les filtres et le générateur existants.
 
-import type { Objective, PlayerLevel, Position } from "../../types/database";
+import type {
+  ExerciseCategory,
+  Intensity,
+  Objective,
+  PlayerLevel,
+  Position,
+} from "../../types/database";
 
-export type { Objective, PlayerLevel, Position };
-
-/** Famille de geste travaillée. Plus fine que `Objective` (but d'entraînement). */
-export type ExerciseCategory =
-  | "reception"
-  | "defense"
-  | "passe"
-  | "attaque"
-  | "service"
-  | "bloc"
-  | "deplacements"
-  | "detente"
-  | "renforcement"
-  | "mobilite"
-  | "lecture_jeu"
-  | "echauffement";
-
-export type Intensity = "low" | "medium" | "high";
+export type { ExerciseCategory, Intensity, Objective, PlayerLevel, Position };
 
 /** Matériel. Un tableau vide signifie "aucun matériel nécessaire". */
 export type Equipment =

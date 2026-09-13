@@ -50,6 +50,34 @@ Depuis le dashboard Supabase → SQL Editor, exécute dans l'ordre :
 5. `supabase/migrations/0005_security_hardening.sql` — verrouille `role`/`is_premium` (non modifiables par un joueur, même via API directe) + déplace le calcul XP/série/badges côté serveur (`apply_session_rewards()`)
 6. `supabase/migrations/0006_more_exercises.sql` — 16 exercices supplémentaires (34 au total)
 7. `supabase/migrations/0007_exercise_media.sql` — vidéos d'exemple (liens YouTube) pour les 18 exercices d'origine — vérifie la lecture après déploiement, voir le commentaire en tête du fichier
+8. `supabase/migrations/0008_exercise_library_schema.sql` — colonnes de la bibliothèque enrichie (catégorie, niveaux, compétences, effectif, intensité, charges, consignes détaillées, progressions/régressions, tags), ajoutées en optionnel
+9. `supabase/migrations/0009_exercise_library_seed.sql` — bibliothèque de 300 exercices (fichier **généré**, voir ci-dessous)
+
+### Bibliothèque d'exercices
+
+Les 300 exercices sont écrits en TypeScript, pas en SQL : `src/data/exercises/`
+contient un fichier par catégorie (réception, défense, passe, attaque, service,
+bloc, déplacements, détente, renforcement, mobilité, lecture du jeu,
+échauffement) et un `index.ts` qui les agrège. C'est la source de vérité.
+
+```bash
+npm run exercises:check   # valide la bibliothèque (échoue en listant chaque problème)
+npm run exercises:build   # régénère supabase/migrations/0009_exercise_library_seed.sql
+```
+
+`exercises:check` vérifie le total (300), les effectifs par catégorie, les
+identifiants et noms dupliqués, les champs obligatoires, les valeurs
+d'énumérations, la cohérence `playersMin`/`playersMax`, les charges, la
+cohérence solo/ballon, et détecte les exercices trop proches par le nom ou la
+description. Ajoute `-- --partial` pour tolérer une bibliothèque en cours
+d'écriture.
+
+Le fichier `0009_exercise_library_seed.sql` est **généré** : ne le modifie
+jamais à la main, édite le TypeScript et relance `npm run exercises:build`.
+L'insertion est idempotente (upsert sur `slug`) et n'efface rien : les exercices
+déjà en base portant le même nom sont enrichis sur place, ce qui préserve
+l'historique des séances déjà réalisées (`workout_exercises` référence
+`exercises` en `on delete restrict`).
 
 ### Devenir administrateur
 
@@ -134,7 +162,7 @@ Remplace `extra.eas.projectId` dans `app.json` par l'ID de ton projet EAS
 | Dashboard (XP, niveau, série, séance du jour, aperçu stats) | ✅ Fonctionnel |
 | Générateur de séances (règles poste/niveau/objectif/durée) | ✅ Fonctionnel |
 | Mode Entraînement (timer récupération, séries, navigation, fin de séance) | ✅ Fonctionnel |
-| Bibliothèque d'exercices + filtres + détail | ✅ Fonctionnel (34 exercices seed) |
+| Bibliothèque d'exercices + filtres + détail | ✅ Fonctionnel (300 exercices) |
 | Journal d'entraînement | ✅ Fonctionnel |
 | Statistiques (6 catégories, graphiques) + ajout manuel | ✅ Fonctionnel |
 | Progression (scores internes, objectifs actifs, évolution semaine/mois) | ✅ Fonctionnel |

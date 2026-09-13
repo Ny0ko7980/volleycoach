@@ -18,6 +18,23 @@ export type Objective =
   | "regularite"
   | "competition"
   | "global";
+/** Famille de geste d'un exercice — plus fine que `Objective` (but d'entraînement). */
+export type ExerciseCategory =
+  | "reception"
+  | "defense"
+  | "passe"
+  | "attaque"
+  | "service"
+  | "bloc"
+  | "deplacements"
+  | "detente"
+  | "renforcement"
+  | "mobilite"
+  | "lecture_jeu"
+  | "echauffement";
+
+export type Intensity = "low" | "medium" | "high";
+
 export type StatCategory = "service" | "reception" | "attaque" | "bloc" | "defense" | "physique";
 export type GoalStatus = "active" | "achieved" | "abandoned";
 export type SessionStatus = "planned" | "in_progress" | "completed" | "skipped";
@@ -66,6 +83,27 @@ export interface Exercise {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+
+  // Colonnes de la bibliothèque enrichie (migration 0008). Optionnelles : les
+  // exercices créés à la main depuis l'admin peuvent ne pas les renseigner.
+  slug?: string | null;
+  category?: ExerciseCategory | null;
+  skills?: string[];
+  levels?: PlayerLevel[];
+  objective_statement?: string | null;
+  players_min?: number | null;
+  players_max?: number | null;
+  intensity?: Intensity | null;
+  instruction_steps?: string[];
+  coaching_points?: string[];
+  common_mistakes_list?: string[];
+  progressions?: string[];
+  regressions?: string[];
+  solo_compatible?: boolean | null;
+  ball_required?: boolean | null;
+  physical_load?: number | null;
+  technical_load?: number | null;
+  tags?: string[];
 }
 
 export interface Workout {
