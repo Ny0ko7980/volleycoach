@@ -63,6 +63,11 @@ export async function updateGoalProgress(goalId: string, currentValue: number): 
   return data as Goal;
 }
 
+export async function deleteGoal(goalId: string): Promise<void> {
+  const { error } = await supabase.from("goals").delete().eq("id", goalId);
+  if (error) throw error;
+}
+
 export function goalProgressPercent(goal: Goal): number {
   if (goal.target_value === 0) return 0;
   return Math.max(0, Math.min(100, Math.round((goal.current_value / goal.target_value) * 100)));

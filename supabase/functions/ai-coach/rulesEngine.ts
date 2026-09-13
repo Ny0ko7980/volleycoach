@@ -25,6 +25,11 @@ export const SAFETY_NOTICE =
 
 const PAIN_KEYWORDS = ["douleur", "mal au", "blessure", "blessé", "ça fait mal", "j'ai mal", "entorse", "déchirure", "craquement"];
 
+export function mentionsPain(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return PAIN_KEYWORDS.some((k) => normalized.includes(k));
+}
+
 interface Rule {
   keywords: string[];
   respond: (ctx: PlayerContext) => string;
@@ -131,7 +136,7 @@ const rules: Rule[] = [
 export function generateRuleBasedReply(message: string, ctx: PlayerContext): string {
   const normalized = message.toLowerCase();
 
-  if (PAIN_KEYWORDS.some((k) => normalized.includes(k))) {
+  if (mentionsPain(message)) {
     return (
       `Je comprends que ça te gêne, ${ctx.username}. Je ne peux pas évaluer une douleur ou une blessure — ` +
       `arrête l'activité qui la déclenche et consulte un médecin ou un kinésithérapeute du sport avant de reprendre l'entraînement. ` +
@@ -150,4 +155,83 @@ export function generateRuleBasedReply(message: string, ctx: PlayerContext): str
     `réception, service, attaque, bloc, détente, vitesse, défense ou régularité. ` +
     `Tu peux aussi me demander des exercices réalisables chez toi, ou des conseils adaptés à ton poste (${ctx.position}).`
   );
+}
+
+// Questions de technique sur un exercice précis ("comment bien faire des squats
+// sautés ?", "quelle est la technique pour la manchette ?"...) : on répond avec
+// le contenu réel de la bibliothèque d'exercices plutôt qu'un conseil générique,
+// pour que la réponse reste toujours exacte et cohérente avec l'app.
+
+export interface ExerciseTechniqueInfo {
+  name: string;
+  objective: string;
+  instructions: string;
+  common_mistakes: string | null;
+  tips: string | null;
+}
+
+const TECHNIQUE_TRIGGER_WORDS = [
+  "comment",
+  "technique",
+  "explique",
+  "expliquer",
+  "bonne façon",
+  "bonne methode",
+  "bonne méthode",
+];
+
+const JUMP_IMPACT_OBJECTIVES = new Set(["detente", "defense"]);
+
+const COMBINING_DIACRITICS = /[̀-ͯ]/g;
+
+function normalizeForMatch(text: string): string {
+  return text.toLowerCase().normalize("NFD").replace(COMBINING_DIACRITICS, "");
+}
+
+// Ramène un mot normalisé à une forme approximative singulier/masculin pour
+// que "manchette" matche "manchettes", "sauté" matche "sautés", etc.
+function stem(word: string): string {
+  return word.length > 4 && word.endsWith("s") ? word.slice(0, -1) : word;
+}
+
+export function findExerciseTechniqueReply(message: string, exercises: ExerciseTechniqueInfo[]): string | null {
+  if (exercises.length === 0) return null;
+
+  const normalizedMessage = normalizeForMatch(message);
+  const hasTriggerWord = TECHNIQUE_TRIGGER_WORDS.some((w) => normalizedMessage.includes(normalizeForMatch(w)));
+  if (!hasTriggerWord) return null;
+
+  const messageStems = new Set(
+    normalizedMessage
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length >= 4)
+      .map(stem)
+  );
+
+  let best: ExerciseTechniqueInfo | null = null;
+  let bestScore = 0;
+
+  for (const exercise of exercises) {
+    const nameWords = normalizeForMatch(exercise.name)
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length >= 4);
+    if (nameWords.length === 0) continue;
+
+    const matched = nameWords.filter((w) => messageStems.has(stem(w))).length;
+    const score = matched / nameWords.length;
+    if (matched > 0 && score > bestScore) {
+      bestScore = score;
+      best = exercise;
+    }
+  }
+
+  if (!best) return null;
+
+  const parts = [`Comment bien exécuter « ${best.name} » :`, best.instructions];
+  if (best.tips) parts.push(`💡 Conseil : ${best.tips}`);
+  if (best.common_mistakes) parts.push(`⚠️ Erreur fréquente à éviter : ${best.common_mistakes}`);
+  parts.push(`Tu retrouves cet exercice dans Entraînement → Bibliothèque.`);
+  if (JUMP_IMPACT_OBJECTIVES.has(best.objective)) parts.push(SAFETY_NOTICE);
+
+  return parts.join("\n\n");
 }

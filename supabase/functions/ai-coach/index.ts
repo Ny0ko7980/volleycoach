@@ -10,7 +10,13 @@
 // Secret optionnel: supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxxx
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-import { generateRuleBasedReply, SAFETY_NOTICE, type PlayerContext } from "./rulesEngine.ts";
+import {
+  generateRuleBasedReply,
+  findExerciseTechniqueReply,
+  mentionsPain,
+  SAFETY_NOTICE,
+  type PlayerContext,
+} from "./rulesEngine.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -79,7 +85,17 @@ Deno.serve(async (req: Request) => {
 
   let reply: string;
 
-  if (ANTHROPIC_API_KEY) {
+  // Question de technique sur un exercice précis ("comment bien faire des
+  // squats sautés ?") : on répond avec le contenu réel de la bibliothèque
+  // d'exercices, exact et toujours disponible même sans clé Anthropic.
+  const { data: exerciseCatalog } = mentionsPain(message)
+    ? { data: null }
+    : await supabase.from("exercises").select("name, objective, instructions, common_mistakes, tips");
+  const techniqueReply = exerciseCatalog ? findExerciseTechniqueReply(message, exerciseCatalog) : null;
+
+  if (techniqueReply) {
+    reply = techniqueReply;
+  } else if (ANTHROPIC_API_KEY) {
     try {
       reply = await callAnthropic(message, ctx, recentStats ?? [], recentSessions ?? []);
     } catch (err) {

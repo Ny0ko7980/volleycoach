@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, Text, View, StyleSheet } from "react-native";
+import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, View, StyleSheet } from "react-native";
 import { Target } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { GoalCard } from "@/components/goals/GoalCard";
@@ -9,7 +9,7 @@ import { Chip } from "@/components/ui/Chip";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { fetchGoals, createGoal } from "@/services/goalsService";
+import { fetchGoals, createGoal, deleteGoal } from "@/services/goalsService";
 import { OBJECTIVES } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { Goal, Objective } from "@/types/database";
@@ -29,6 +29,24 @@ export default function GoalsScreen() {
 
   useEffect(load, []);
 
+  function handleDelete(goal: Goal) {
+    Alert.alert("Supprimer cet objectif ?", goal.name, [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteGoal(goal.id);
+            setGoals((prev) => prev.filter((g) => g.id !== goal.id));
+          } catch (e) {
+            Alert.alert("Erreur", e instanceof Error ? e.message : "Impossible de supprimer cet objectif.");
+          }
+        },
+      },
+    ]);
+  }
+
   if (loading) return <LoadingView />;
 
   const active = goals.filter((g) => g.status === "active");
@@ -47,14 +65,14 @@ export default function GoalsScreen() {
         <>
           <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>En cours ({active.length})</Text>
           {active.map((g) => (
-            <GoalCard key={g.id} goal={g} />
+            <GoalCard key={g.id} goal={g} onDelete={handleDelete} />
           ))}
 
           {achieved.length > 0 ? (
             <>
               <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>Atteints ({achieved.length})</Text>
               {achieved.map((g) => (
-                <GoalCard key={g.id} goal={g} />
+                <GoalCard key={g.id} goal={g} onDelete={handleDelete} />
               ))}
             </>
           ) : null}
