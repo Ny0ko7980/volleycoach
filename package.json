@@ -10,6 +10,8 @@
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
+    "exercises:check": "tsx scripts/validate-exercises.ts",
+    "exercises:build": "tsx scripts/build-exercise-seed.ts",
     "test": "jest"
   },
   "dependencies": {
@@ -47,9 +49,11 @@
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
+    "@types/node": "^26.5.1",
     "@types/react": "~19.2.18",
     "eslint": "^8.57.0",
     "eslint-config-expo": "~57.0.2",
+    "tsx": "^4.23.13",
     "typescript": "~5.9.3"
   }
 }
