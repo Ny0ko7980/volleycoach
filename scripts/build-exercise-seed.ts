@@ -103,6 +103,14 @@ const updateAssignments = COLUMNS.filter((column) => column !== "slug")
   .map((column) => `  ${column} = excluded.${column}`)
   .join(",\n");
 
+// Les exercices déjà en base (migrations 0003 et 0006) portent parfois le même
+// nom qu'un exercice de la bibliothèque. On leur attribue d'abord le slug
+// correspondant : l'upsert les enrichit alors sur place au lieu de créer un
+// doublon, et leur identifiant reste valide pour les séances déjà réalisées.
+const nameAdoptions = ALL_EXERCISES.map(
+  (exercise) => `    (${sqlText(exercise.id)}, ${sqlText(exercise.name)})`
+).join(",\n");
+
 const sql = `-- Coach Volley — bibliothèque d'exercices (${ALL_EXERCISES.length} exercices).
 --
 -- FICHIER GÉNÉRÉ AUTOMATIQUEMENT — NE PAS ÉDITER À LA MAIN.
@@ -112,6 +120,15 @@ const sql = `-- Coach Volley — bibliothèque d'exercices (${ALL_EXERCISES.leng
 -- L'insertion est idempotente (upsert sur \`slug\`) : rejouer cette migration
 -- met simplement les exercices à jour, sans jamais créer de doublon ni
 -- supprimer d'exercice existant (les séances déjà réalisées restent valides).
+
+-- Adoption des exercices déjà présents portant le même nom : ils reçoivent le
+-- slug de la bibliothèque et seront enrichis par l'upsert, plutôt que dupliqués.
+update public.exercises as e
+set slug = v.slug
+from (values
+${nameAdoptions}
+) as v(slug, name)
+where e.slug is null and e.name = v.name;
 
 insert into public.exercises
   (${COLUMNS.join(", ")})
