@@ -41,6 +41,7 @@ export interface ExerciseInput {
   instructions: string;
   commonMistakes?: string;
   tips?: string;
+  mediaUrl?: string;
 }
 
 export async function createExerciseAsAdmin(input: ExerciseInput): Promise<Exercise> {
@@ -61,6 +62,7 @@ export async function createExerciseAsAdmin(input: ExerciseInput): Promise<Exerc
       instructions: input.instructions,
       common_mistakes: input.commonMistakes ?? null,
       tips: input.tips ?? null,
+      media_url: input.mediaUrl ?? null,
       created_by: auth.user.id,
     })
     .select("*")
@@ -84,6 +86,7 @@ export async function updateExerciseAsAdmin(id: string, input: ExerciseInput): P
       instructions: input.instructions,
       common_mistakes: input.commonMistakes ?? null,
       tips: input.tips ?? null,
+      media_url: input.mediaUrl ?? null,
     })
     .eq("id", id)
     .select("*")

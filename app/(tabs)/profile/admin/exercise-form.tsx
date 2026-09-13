@@ -30,6 +30,7 @@ export default function ExerciseFormScreen() {
   const [instructions, setInstructions] = useState("");
   const [commonMistakes, setCommonMistakes] = useState("");
   const [tips, setTips] = useState("");
+  const [mediaUrl, setMediaUrl] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("10");
   const [equipment, setEquipment] = useState("");
   const [positions, setPositions] = useState<Position[]>([]);
@@ -46,6 +47,7 @@ export default function ExerciseFormScreen() {
       setInstructions(ex.instructions);
       setCommonMistakes(ex.common_mistakes ?? "");
       setTips(ex.tips ?? "");
+      setMediaUrl(ex.media_url ?? "");
       setDurationMinutes(String(ex.duration_minutes));
       setEquipment(ex.equipment.join(", "));
       setPositions(ex.positions);
@@ -83,6 +85,7 @@ export default function ExerciseFormScreen() {
         instructions: instructions.trim(),
         commonMistakes: commonMistakes.trim() || undefined,
         tips: tips.trim() || undefined,
+        mediaUrl: mediaUrl.trim() || undefined,
       };
       if (isEditing && id) await updateExerciseAsAdmin(id, input);
       else await createExerciseAsAdmin(input);
@@ -136,6 +139,14 @@ export default function ExerciseFormScreen() {
       <TextField label="Instructions" value={instructions} onChangeText={setInstructions} multiline />
       <TextField label="Erreurs fréquentes (optionnel)" value={commonMistakes} onChangeText={setCommonMistakes} multiline />
       <TextField label="Conseil (optionnel)" value={tips} onChangeText={setTips} multiline />
+      <TextField
+        label="Lien vidéo d'exemple (YouTube ou fichier vidéo, optionnel)"
+        value={mediaUrl}
+        onChangeText={setMediaUrl}
+        placeholder="https://www.youtube.com/watch?v=..."
+        autoCapitalize="none"
+        keyboardType="url"
+      />
 
       {error ? <Text style={{ color: theme.danger, marginBottom: spacing.md }}>{error}</Text> : null}
 

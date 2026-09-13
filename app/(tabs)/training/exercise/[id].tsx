@@ -6,6 +6,7 @@ import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { DifficultyDots } from "@/components/ui/DifficultyDots";
+import { ExerciseVideo } from "@/components/exercises/ExerciseVideo";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
@@ -53,6 +54,12 @@ export default function ExerciseDetailScreen() {
       </View>
 
       <Text style={[typography.body, { color: theme.textMuted, marginBottom: spacing.lg }]}>{exercise.description}</Text>
+
+      {exercise.media_url ? (
+        <View style={{ marginBottom: spacing.md }}>
+          <ExerciseVideo url={exercise.media_url} />
+        </View>
+      ) : null}
 
       {exercise.positions.length > 0 ? (
         <Card>
