@@ -180,6 +180,13 @@ const TECHNIQUE_TRIGGER_WORDS = [
   "bonne méthode",
 ];
 
+/**
+ * Au-delà de ce score de correspondance, le nom de l'exercice est reconnu assez
+ * clairement pour se passer d'un mot déclencheur : "faire des squats sautés"
+ * doit répondre aussi bien que "comment faire des squats sautés ?".
+ */
+const STRONG_MATCH_SCORE = 0.5;
+
 const JUMP_IMPACT_OBJECTIVES = new Set(["detente", "defense"]);
 
 const COMBINING_DIACRITICS = /[̀-ͯ]/g;
@@ -199,7 +206,6 @@ export function findExerciseTechniqueReply(message: string, exercises: ExerciseT
 
   const normalizedMessage = normalizeForMatch(message);
   const hasTriggerWord = TECHNIQUE_TRIGGER_WORDS.some((w) => normalizedMessage.includes(normalizeForMatch(w)));
-  if (!hasTriggerWord) return null;
 
   const messageStems = new Set(
     normalizedMessage
@@ -226,6 +232,11 @@ export function findExerciseTechniqueReply(message: string, exercises: ExerciseT
   }
 
   if (!best) return null;
+
+  // Correspondance partielle : on n'intervient que si la question est bien une
+  // demande de technique, pour ne pas détourner une conversation qui mentionne
+  // un exercice en passant.
+  if (bestScore < STRONG_MATCH_SCORE && !hasTriggerWord) return null;
 
   const parts = [`Comment bien exécuter « ${best.name} » :`, best.instructions];
   if (best.tips) parts.push(`💡 Conseil : ${best.tips}`);
