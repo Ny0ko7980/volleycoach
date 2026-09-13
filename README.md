@@ -48,6 +48,8 @@ Depuis le dashboard Supabase → SQL Editor, exécute dans l'ordre :
 3. `supabase/migrations/0003_seed_data.sql` — 18 exercices + 9 badges de départ
 4. `supabase/migrations/0004_team_management.sql` — code d'invitation équipe + fonctions `create_team_as_coach`/`join_team_by_code`/`leave_team`
 5. `supabase/migrations/0005_security_hardening.sql` — verrouille `role`/`is_premium` (non modifiables par un joueur, même via API directe) + déplace le calcul XP/série/badges côté serveur (`apply_session_rewards()`)
+6. `supabase/migrations/0006_more_exercises.sql` — 16 exercices supplémentaires (34 au total)
+7. `supabase/migrations/0007_exercise_media.sql` — vidéos d'exemple (liens YouTube) pour les 18 exercices d'origine — vérifie la lecture après déploiement, voir le commentaire en tête du fichier
 
 ### Devenir administrateur
 
@@ -132,7 +134,7 @@ Remplace `extra.eas.projectId` dans `app.json` par l'ID de ton projet EAS
 | Dashboard (XP, niveau, série, séance du jour, aperçu stats) | ✅ Fonctionnel |
 | Générateur de séances (règles poste/niveau/objectif/durée) | ✅ Fonctionnel |
 | Mode Entraînement (timer récupération, séries, navigation, fin de séance) | ✅ Fonctionnel |
-| Bibliothèque d'exercices + filtres + détail | ✅ Fonctionnel (18 exercices seed) |
+| Bibliothèque d'exercices + filtres + détail | ✅ Fonctionnel (34 exercices seed) |
 | Journal d'entraînement | ✅ Fonctionnel |
 | Statistiques (6 catégories, graphiques) + ajout manuel | ✅ Fonctionnel |
 | Progression (scores internes, objectifs actifs, évolution semaine/mois) | ✅ Fonctionnel |
