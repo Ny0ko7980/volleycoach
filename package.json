@@ -13,6 +13,7 @@
     "exercises:check": "tsx scripts/validate-exercises.ts",
     "exercises:build": "tsx scripts/build-exercise-seed.ts",
     "engine:check": "tsx scripts/check-recommendation-engine.ts",
+    "coach:check": "tsx scripts/check-ai-coach.ts",
     "test": "jest"
   },
   "dependencies": {

@@ -157,6 +157,7 @@ npm run lint             # ESLint
 npm run exercises:check  # valide les 300 exercices de la bibliothèque
 npm run exercises:build  # régénère la migration 0009 depuis src/data/exercises
 npm run engine:check     # vérifie le comportement du moteur de recommandation
+npm run coach:check      # vérifie le routage des réponses du Coach IA
 ```
 
 ## 6. Entraînements personnalisés

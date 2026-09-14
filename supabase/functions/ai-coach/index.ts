@@ -13,6 +13,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import {
   generateRuleBasedReply,
   findExerciseTechniqueReply,
+  findGestureDiagnosisReply,
   mentionsPain,
   SAFETY_NOTICE,
   type PlayerContext,
@@ -85,15 +86,25 @@ Deno.serve(async (req: Request) => {
 
   let reply: string;
 
-  // Question de technique sur un exercice précis ("comment bien faire des
-  // squats sautés ?") : on répond avec le contenu réel de la bibliothèque
-  // d'exercices, exact et toujours disponible même sans clé Anthropic.
+  // Deux familles de questions reçoivent une réponse adossée au contenu réel
+  // de la bibliothèque, exacte et disponible même sans clé Anthropic :
+  //   - « pourquoi je rate mes manchettes ? » → les causes du raté, puis les
+  //     exercices qui les corrigent ;
+  //   - « comment bien faire des squats sautés ? » → la fiche d'exécution.
+  // L'ordre compte : une question de diagnostic mentionne forcément le geste,
+  // et ne doit pas être détournée vers une fiche technique.
   const { data: exerciseCatalog } = mentionsPain(message)
     ? { data: null }
     : await supabase.from("exercises").select("name, objective, instructions, common_mistakes, tips");
-  const techniqueReply = exerciseCatalog ? findExerciseTechniqueReply(message, exerciseCatalog) : null;
+  const diagnosisReply = exerciseCatalog
+    ? findGestureDiagnosisReply(message, exerciseCatalog, ctx.username)
+    : null;
+  const techniqueReply =
+    !diagnosisReply && exerciseCatalog ? findExerciseTechniqueReply(message, exerciseCatalog) : null;
 
-  if (techniqueReply) {
+  if (diagnosisReply) {
+    reply = diagnosisReply;
+  } else if (techniqueReply) {
     reply = techniqueReply;
   } else if (ANTHROPIC_API_KEY) {
     try {
