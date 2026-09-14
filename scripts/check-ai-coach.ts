@@ -106,6 +106,31 @@ for (const [question, expected] of symptomCases) {
   check(`« ${question} »`, (r ?? "").includes(expected), (r ?? "null").slice(0, 70));
 }
 
+// --- Passe arrière : ne doit jamais être confondue avec la passe avant ----
+const backSetCases: [string, string][] = [
+  ["mes passes arriere sont trop courtes", "passes arrière sont trop courtes"],
+  ["pourquoi mes passes arrieres sont trop courtes", "passes arrière sont trop courtes"],
+  ["mes passes arriere partent n'importe ou", "passes arrière partent n'importe où"],
+  ["je rate mes passes arriere", "passes arrière partent n'importe où"],
+  ["j'arrive pas a passer derriere", "passe arrière"],
+];
+for (const [question, expected] of backSetCases) {
+  const r = findGestureDiagnosisReply(question, catalog, "Nyoko");
+  check(`« ${question} »`, (r ?? "").includes(expected), (r ?? "null").slice(0, 70));
+}
+
+const back = findGestureDiagnosisReply("mes passes arriere sont trop courtes", catalog, "Nyoko");
+check("la passe arrière cite sa cause propre (on passe sans voir)",
+  (back ?? "").includes("cambres") || (back ?? "").includes("repéré"));
+check("la passe avant garde bien son propre diagnostic",
+  (findGestureDiagnosisReply("mes passes sont trop courtes", catalog, "Nyoko") ?? "")
+    .includes("Tes passes sont trop courtes"));
+check("→ et n'est pas capturée par la passe arrière",
+  !(findGestureDiagnosisReply("mes passes sont trop courtes", catalog, "Nyoko") ?? "")
+    .includes("passes arrière"));
+check("« je recule derriere la ligne » ne déclenche pas la passe arrière",
+  findGestureDiagnosisReply("je recule derriere la ligne", catalog, "Nyoko") === null);
+
 // Une réponse par symptôme doit donner une correction prioritaire
 const sym = findGestureDiagnosisReply("mon service part dans le filet", catalog, "Nyoko");
 check("une réponse par symptôme propose une correction prioritaire",

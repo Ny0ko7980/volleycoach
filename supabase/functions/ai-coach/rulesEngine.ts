@@ -243,6 +243,13 @@ export function isDiagnosticQuestion(message: string): boolean {
  */
 interface SymptomDiagnosis {
   gestureWords: string[];
+  /**
+   * Gestes qui ne se désignent qu'en plusieurs mots : « passe arrière » ne
+   * peut pas être reconnu par un mot isolé, « passe » et « arrière » pris
+   * séparément désignent tout autre chose. Chaque combinaison doit être
+   * présente en entier.
+   */
+  gesturePairs?: string[][];
   symptomWords: string[];
   objective: string;
   title: string;
@@ -386,6 +393,39 @@ const SYMPTOM_DIAGNOSES: SymptomDiagnosis[] = [
     fix:
       "Vise volontairement trois mètres au-dessus du passeur. Chercher la hauteur plutôt que la distance corrige la longueur sans y penser.",
   },
+  // ----- Passe arrière ---------------------------------------------------
+  // Placée avant la passe avant : « mes passes arrière sont trop courtes »
+  // ne doit pas recevoir le diagnostic d'une passe classique, les causes
+  // n'étant pas les mêmes — on passe sans voir la cible.
+  {
+    gestureWords: [],
+    gesturePairs: [["passe", "arriere"], ["passes", "arriere"], ["passe", "derriere"], ["passer", "derriere"]],
+    symptomWords: ["trop court", "trop courte", "courte", "atteint pas", "pas assez loin", "retombe", "trop plate"],
+    objective: "precision",
+    title: "Tes passes arrière sont trop courtes",
+    causes: [
+      "**Tu te cambres au lieu de pousser.** Partir en arrière avec le buste donne l'impression d'envoyer le ballon derrière, mais ça supprime l'extension des bras — celle qui donne réellement la distance. Et ça sollicite le bas du dos pour rien.",
+      "**Le ballon est pris trop devant.** Sur une passe arrière, le contact se fait un peu plus haut et plus reculé que sur une passe avant : au-dessus du front, voire légèrement derrière. Pris devant, le ballon ne peut plus partir loin en arrière.",
+      "**L'extension des bras est incomplète.** La distance se joue en toute fin de geste : coudes totalement tendus, mains qui finissent derrière la tête. Un geste arrêté à mi-course donne une passe courte à chaque fois.",
+    ],
+    fix:
+      "Garde le buste droit et pousse vers le haut et l'arrière avec les bras, pas avec le dos. Vise nettement plus haut que ce qui te semble nécessaire : une passe arrière trop courte est presque toujours une passe pas assez haute.",
+  },
+  {
+    gestureWords: [],
+    gesturePairs: [["passe", "arriere"], ["passes", "arriere"], ["passe", "derriere"], ["passer", "derriere"]],
+    symptomWords: ["n'importe ou", "nimporte ou", "partout", "imprecise", "imprecis", "jamais au bon endroit", "rate", "loupe", "marche pas"],
+    objective: "precision",
+    title: "Tes passes arrière partent n'importe où",
+    causes: [
+      "**Tu passes sans avoir repéré ton attaquant.** C'est la particularité de la passe arrière : tu ne vois pas la cible au moment du contact. Sa position doit donc être mémorisée **pendant que le ballon monte vers toi**, pas cherchée après.",
+      "**Le ballon n'est pas exactement au-dessus du front.** Pris devant ou sur le côté, il devient impossible d'en contrôler la direction à l'aveugle.",
+      "**Tes épaules ne sont pas dans l'axe.** En passe arrière, l'axe des épaules remplace le regard : s'il ne pointe pas vers la cible avant le contact, la balle part ailleurs.",
+      "**Une main pousse plus que l'autre.** Un contact asymétrique dévie toujours du même côté — si tes passes ratées partent systématiquement à gauche ou à droite, c'est probablement ça.",
+    ],
+    fix:
+      "Avant chaque passe arrière, jette un coup d'œil à ton attaquant pendant que le ballon monte. La précision vient de cette information prise en avance, pas du geste lui-même.",
+  },
   // ----- Passe -----------------------------------------------------------
   {
     gestureWords: SET_WORDS,
@@ -518,6 +558,8 @@ interface GestureDiagnosis {
   label: string;
   objective: string;
   keywords: string[];
+  /** Gestes désignés par plusieurs mots (voir `gesturePairs` ci-dessus). */
+  keywordPairs?: string[][];
   causes: string[];
   selfCheck: string;
 }
@@ -536,6 +578,20 @@ const GESTURE_DIAGNOSES: GestureDiagnosis[] = [
     ],
     selfCheck:
       "Pour trouver laquelle te concerne : filme-toi **de côté** sur dix réceptions. Les trois premières causes se voient immédiatement à l'image, bien plus vite qu'en cherchant à le sentir.",
+  },
+  {
+    label: "la passe arrière",
+    objective: "precision",
+    keywords: [],
+    keywordPairs: [["passe", "arriere"], ["passes", "arriere"], ["passe", "derriere"], ["passer", "derriere"]],
+    causes: [
+      "**Tu passes sans avoir repéré la cible.** Sur une passe arrière tu ne vois pas ton attaquant : sa position doit être prise pendant que le ballon monte vers toi. Sans cette information, tout le reste du geste est au hasard.",
+      "**Le ballon n'est pas au-dessus du front.** C'est le placement qui rend la passe arrière contrôlable, plus encore que sur une passe avant, puisque tu ne peux pas corriger à vue.",
+      "**Tu te cambres au lieu de pousser avec les bras.** Le buste qui part en arrière remplace l'extension des bras : la passe perd sa distance et sa régularité, et le bas du dos encaisse.",
+      "**Tes épaules ne sont pas orientées avant le contact.** L'axe des épaules remplace le regard : il se règle avant, jamais pendant.",
+    ],
+    selfCheck:
+      "Filme-toi **de côté** : si ton buste part en arrière avant tes bras, tu tiens ta cause principale. C'est de loin le défaut le plus répandu sur ce geste.",
   },
   {
     label: "la passe / touche haute",
@@ -651,7 +707,10 @@ export function findGestureDiagnosisReply(
   // aboutissent tous au même diagnostic.
   const symptom = SYMPTOM_DIAGNOSES.find(
     (entry) =>
-      entry.gestureWords.some((word) => normalized.includes(normalizeForMatch(word))) &&
+      (entry.gestureWords.some((word) => normalized.includes(normalizeForMatch(word))) ||
+        (entry.gesturePairs ?? []).some((pair) =>
+          pair.every((word) => normalized.includes(normalizeForMatch(word)))
+        )) &&
       entry.symptomWords.some((word) => normalized.includes(normalizeForMatch(word)))
   );
 
@@ -670,8 +729,12 @@ export function findGestureDiagnosisReply(
   // les causes fréquentes du geste et on le laisse identifier la sienne.
   if (!isDiagnosticQuestion(message)) return null;
 
-  const gesture = GESTURE_DIAGNOSES.find((entry) =>
-    entry.keywords.some((keyword) => normalized.includes(normalizeForMatch(keyword)))
+  const gesture = GESTURE_DIAGNOSES.find(
+    (entry) =>
+      entry.keywords.some((keyword) => normalized.includes(normalizeForMatch(keyword))) ||
+      (entry.keywordPairs ?? []).some((pair) =>
+        pair.every((keyword) => normalized.includes(normalizeForMatch(keyword)))
+      )
   );
   // Aucun geste reconnu : on ne fabrique pas un diagnostic sur un geste qu'on
   // n'a pas identifié.
