@@ -176,11 +176,18 @@ export interface ExerciseTechniqueInfo {
  * manchette ? ». La première demande des causes, la seconde une exécution.
  */
 const DIAGNOSIS_MARKERS = [
+  // Interrogation directe
   "pourquoi",
+  "comment ca se fait",
+  "qu'est-ce qui cloche",
+  "quest-ce qui cloche",
+  // Échec exprimé à la première personne
   "j'arrive pas",
   "jarrive pas",
   "n'arrive pas",
   "narrive pas",
+  "j'y arrive pas",
+  "jy arrive pas",
   "je rate",
   "je loupe",
   "je manque",
@@ -188,17 +195,316 @@ const DIAGNOSIS_MARKERS = [
   "jai du mal",
   "je galere",
   "je galère",
+  "je comprends pas",
+  "je suis nul",
+  "je suis mauvais",
   "c'est nul",
   "mauvais en",
   "mauvaise en",
+  // Échec exprimé par le résultat
+  "marche pas",
+  "ca marche pas",
+  "fonctionne pas",
+  "ca rate",
+  "ca foire",
+  "ca part",
+  "ca sort",
+  "ca tombe",
+  "part mal",
+  "n'importe ou",
+  "nimporte ou",
+  "trop court",
+  "trop courte",
+  "trop long",
+  "trop longue",
+  "pas assez",
+  // Récurrence
+  "a chaque fois",
+  "tout le temps",
+  "systematiquement",
   "probleme",
   "problème",
+  "souci",
 ];
 
 export function isDiagnosticQuestion(message: string): boolean {
   const normalized = normalizeForMatch(message);
   return DIAGNOSIS_MARKERS.some((marker) => normalized.includes(normalizeForMatch(marker)));
 }
+
+/**
+ * Diagnostics par symptôme précis.
+ *
+ * « Mon service part dans le filet » et « mon service sort » ne partagent
+ * aucune cause : répondre la même liste générique aux deux serait inutile.
+ * Une entrée ne se déclenche que si la phrase contient à la fois un mot du
+ * geste ET un mot du symptôme — ce qui rend la reconnaissance sûre sans
+ * dépendre d'une formulation précise.
+ */
+interface SymptomDiagnosis {
+  gestureWords: string[];
+  symptomWords: string[];
+  objective: string;
+  title: string;
+  causes: string[];
+  /** La correction à tenter en premier, celle qui règle le cas le plus souvent. */
+  fix: string;
+}
+
+const SERVICE_WORDS = ["service", "services", "sers", "servir", "engagement"];
+const ATTACK_WORDS = ["attaque", "attaques", "smash", "smasher", "frappe", "spike", "attaquer"];
+const RECEPTION_WORDS = ["manchette", "manchettes", "reception", "receptions", "receptionne", "receptionner"];
+const SET_WORDS = ["passe", "passes", "touche haute", "doigts", "passeur"];
+// « bloque » et « bloqué » s'écrivent avec un q : chercher « bloc » ne les
+// reconnaît pas. Le radical « bloqu » couvre toutes les formes conjuguées.
+const BLOCK_WORDS = ["bloc", "blocs", "bloqu", "contre"];
+const JUMP_WORDS = ["saut", "sauter", "saute", "detente", "impulsion", "monte"];
+const DEFENSE_WORDS = ["defense", "defendre", "plongeon", "recuperer", "sauver"];
+
+const SYMPTOM_DIAGNOSES: SymptomDiagnosis[] = [
+  // ----- Service ---------------------------------------------------------
+  {
+    gestureWords: SERVICE_WORDS,
+    symptomWords: ["filet", "trop bas", "tombe", "n'arrive pas de l'autre", "narrive pas de l'autre"],
+    objective: "service",
+    title: "Ton service tombe dans le filet",
+    causes: [
+      "**Le lancer est trop en avant.** Si le ballon part devant toi, tu le frappes en descente : la trajectoire plonge forcément. Le lancer doit monter devant l'épaule qui frappe, pas devant le corps.",
+      "**Tu frappes trop bas.** Le contact doit se faire bras tendu, au point le plus haut. Frapper coude plié abaisse le point de sortie de trente centimètres, ce qui suffit à accrocher la bande.",
+      "**Tu freines la frappe.** Par peur de la faute, beaucoup ralentissent le bras au contact : le ballon perd la vitesse qui le porterait par-dessus.",
+    ],
+    fix:
+      "Corrige le lancer d'abord, pas la frappe. Fais vingt lancers sans frapper en cherchant à ce que le ballon retombe toujours au même endroit, légèrement devant ton épaule de frappe.",
+  },
+  {
+    gestureWords: SERVICE_WORDS,
+    symptomWords: ["sort", "dehors", "trop long", "trop fort", "derriere la ligne", "hors"],
+    objective: "service",
+    title: "Ton service sort derrière",
+    causes: [
+      "**Le lancer part en arrière.** Un ballon lancé au-dessus ou derrière la tête t'oblige à frapper en te cambrant : la trajectoire monte et file trop loin.",
+      "**Tu frappes sous le ballon.** Un contact sous l'équateur lui donne une trajectoire montante. Il faut frapper derrière le ballon, légèrement au-dessus du centre.",
+      "**Le poignet ne casse pas.** Sans le fouetté du poignet vers le bas en fin de frappe, rien ne fait redescendre le ballon dans le terrain.",
+    ],
+    fix:
+      "Concentre-toi sur la fin du geste : le poignet doit finir cassé vers le sol, la main terminant plus bas que le point de contact.",
+  },
+  {
+    gestureWords: SERVICE_WORDS,
+    symptomWords: ["pas de puissance", "pas assez fort", "mou", "faible", "trop mou"],
+    objective: "service",
+    title: "Ton service manque de puissance",
+    causes: [
+      "**Tu frappes avec le bras seul.** La puissance vient du transfert du poids de l'arrière vers l'avant et de la rotation des épaules, pas de la force du bras.",
+      "**Le contact n'est pas sec.** Une main molle ou ouverte absorbe l'énergie. La main doit être ferme, le contact bref.",
+      "**L'armé est incomplet.** Si le coude ne part pas assez haut et assez en arrière, il n'y a pas de course de bras pour accélérer.",
+    ],
+    fix:
+      "Sers en partant d'un pas : pied arrière posé, transfert vers l'avant pendant l'armé. Tu gagneras plus de vitesse qu'en cherchant à frapper plus fort.",
+  },
+  // ----- Attaque ---------------------------------------------------------
+  {
+    gestureWords: ATTACK_WORDS,
+    symptomWords: ["filet", "dans le filet", "tombe", "trop bas"],
+    objective: "attaque",
+    title: "Tes attaques finissent dans le filet",
+    causes: [
+      "**Tu es trop près du filet au moment de frapper.** Une course d'élan qui t'amène sous le ballon ferme complètement l'angle : il ne reste plus que le filet devant toi. On attaque avec le ballon devant soi, pas au-dessus de la tête.",
+      "**Tu frappes le ballon déjà descendu.** Partir trop tard oblige à frapper en dessous du point optimal, et la trajectoire pique.",
+      "**Le bras n'est pas tendu au contact.** Frapper coude plié abaisse le point de frappe et supprime tout angle par-dessus le bloc.",
+    ],
+    fix:
+      "Recule ton point de départ d'un mètre. La majorité des attaques dans le filet viennent d'une course trop courte, pas d'un défaut de frappe.",
+  },
+  {
+    gestureWords: ATTACK_WORDS,
+    symptomWords: ["sort", "dehors", "trop long", "hors"],
+    objective: "attaque",
+    title: "Tes attaques sortent",
+    causes: [
+      "**Tu frappes sous le ballon.** Le contact doit se faire derrière et légèrement au-dessus du centre, jamais dessous.",
+      "**Le poignet ne casse pas.** C'est le fouetté du poignet qui fait retomber le ballon dans le terrain. Sans lui, tout part en cloche.",
+      "**Tu cherches la puissance maximale.** À vitesse de bras maximale, la marge d'erreur disparaît. Un attaquant régulier frappe à environ 80 % et vise une zone.",
+    ],
+    fix:
+      "Travaille la frappe main haute en visant le sol à trois mètres du filet : cela force mécaniquement le poignet à casser.",
+  },
+  {
+    // « je me fais bloquer » décrit un problème d'attaque même sans le mot :
+    // ces tournures valent donc mot de geste à elles seules. L'entrée est
+    // placée avant celles du bloc pour que « bloquer » ne soit pas lu comme
+    // une question sur la façon de bloquer.
+    gestureWords: [...ATTACK_WORDS, "me fais bloquer", "fais bloquer", "font bloquer", "me bloque", "suis bloque"],
+    symptomWords: ["bloqu", "contre", "mur", "systematiquement", "a chaque fois", "tout le temps"],
+    objective: "attaque",
+    title: "Tu te fais bloquer systématiquement",
+    causes: [
+      "**Tu attaques toujours dans la même direction.** Un bloc lit la répétition en deux ou trois attaques. Alterner ligne et diagonale suffit souvent à tout débloquer.",
+      "**Tu ne regardes pas le bloc.** Il faut voir les mains adverses pendant la montée, pas après la frappe. C'est ce regard qui permet de choisir.",
+      "**Tu n'utilises jamais les mains du bloc.** Frapper volontairement sur le bord extérieur des mains pour sortir le ballon est une arme, pas un échec.",
+    ],
+    fix:
+      "À la prochaine séance, impose-toi d'annoncer à voix haute la direction avant de sauter, puis de la changer une fois sur deux. L'objectif n'est pas de marquer, c'est de reprendre l'habitude de choisir.",
+  },
+  // ----- Réception -------------------------------------------------------
+  {
+    gestureWords: RECEPTION_WORDS,
+    symptomWords: ["n'importe ou", "nimporte ou", "partout", "imprecise", "imprecis", "jamais au bon endroit"],
+    objective: "reception",
+    title: "Tes réceptions partent n'importe où",
+    causes: [
+      "**La plateforme bouge au contact.** Coudes qui plient, épaules qui montent, poignets qui cassent : chaque micro-mouvement change l'angle de rebond. La plateforme doit rester figée du début à la fin.",
+      "**Tes épaules ne sont pas orientées vers la cible.** Le ballon repart dans l'axe de tes avant-bras. Si les épaules regardent ailleurs que le passeur, la direction est déjà perdue avant le contact.",
+      "**Tu touches le ballon en te déplaçant.** Le moindre pas pendant le contact déporte la trajectoire.",
+    ],
+    fix:
+      "Une seule consigne à la fois : arriver arrêté. Accepte de renvoyer moins bien mais d'être immobile au contact, la direction se stabilisera d'elle-même.",
+  },
+  {
+    gestureWords: RECEPTION_WORDS,
+    symptomWords: ["derriere", "trop loin", "trop long", "depasse", "par dessus"],
+    objective: "reception",
+    title: "Tes réceptions partent trop loin derrière",
+    causes: [
+      "**Ta plateforme est trop verticale.** Plus les bras se rapprochent de l'horizontale, plus le ballon file loin. Les bras doivent pointer vers le bas, vers la cible.",
+      "**Tu pousses avec les bras.** Un coup de bras ajoute une vitesse que tu ne contrôles pas. Les bras ne font qu'orienter, ce sont les jambes qui dosent.",
+      "**Tu es trop bas sous le ballon.** Le prendre trop près du sol oblige à le relever brutalement.",
+    ],
+    fix:
+      "Bloque tes bras et ne renvoie qu'avec les jambes. Le simple fait de supprimer le coup de bras corrige la longueur dans la grande majorité des cas.",
+  },
+  {
+    gestureWords: RECEPTION_WORDS,
+    symptomWords: ["trop court", "trop courte", "tombe devant", "atteint pas", "arrive pas au passeur"],
+    objective: "reception",
+    title: "Tes réceptions sont trop courtes",
+    causes: [
+      "**Tu absorbes au lieu de relayer.** Reculer les bras au contact amortit le ballon et lui enlève toute la hauteur nécessaire.",
+      "**Tes jambes ne s'étendent pas.** Sans extension, il n'y a aucune énergie pour envoyer le ballon jusqu'au passeur.",
+      "**Tu prends le ballon trop haut sur la plateforme.** Près des coudes, le ballon meurt.",
+    ],
+    fix:
+      "Vise volontairement trois mètres au-dessus du passeur. Chercher la hauteur plutôt que la distance corrige la longueur sans y penser.",
+  },
+  // ----- Passe -----------------------------------------------------------
+  {
+    gestureWords: SET_WORDS,
+    symptomWords: ["porte", "portee", "tenue", "faute", "siffle", "arbitre"],
+    objective: "precision",
+    title: "On te siffle des ballons tenus en passe",
+    causes: [
+      "**Le contact dure trop longtemps.** Le ballon doit être repoussé au moment où il touche les doigts, pas accompagné. Plus tu essaies de contrôler, plus tu tiens.",
+      "**Tes mains sont trop basses.** Prendre le ballon devant le visage oblige à l'accompagner vers le haut. Les mains doivent être au-dessus du front.",
+      "**Tu n'es pas placé sous le ballon.** Passer en déséquilibre force à rattraper avec les mains, donc à tenir.",
+    ],
+    fix:
+      "Travaille des passes courtes et sèches contre un mur : l'enchaînement rapide rend le ballon tenu impossible.",
+  },
+  {
+    gestureWords: SET_WORDS,
+    symptomWords: ["trop court", "trop courte", "courte", "atteint pas", "pas assez loin"],
+    objective: "precision",
+    title: "Tes passes sont trop courtes",
+    causes: [
+      "**Aucun transfert de poids.** Sans un pied en retrait qui pousse vers l'avant, la passe ne part que des bras.",
+      "**Les jambes ne participent pas.** Une passe longue est un mouvement de tout le corps : jambes, tronc, puis bras.",
+      "**Tu freines le geste.** L'extension des bras doit aller jusqu'au bout, les coudes complètement tendus en fin de passe.",
+    ],
+    fix:
+      "Fais dix passes en fente, pied arrière marqué, en cherchant à finir bras totalement tendus. La distance vient de là, pas de la force des doigts.",
+  },
+  // ----- Bloc ------------------------------------------------------------
+  {
+    gestureWords: BLOCK_WORDS,
+    symptomWords: ["touche le filet", "filet", "faute de filet"],
+    objective: "bloc",
+    title: "Tu touches le filet au bloc",
+    causes: [
+      "**Tu sautes vers l'avant.** Un saut de bloc est strictement vertical. Toute avancée te fait dériver dans le filet.",
+      "**Tu es trop près au départ.** Il faut une largeur de main entre toi et le filet avant de sauter.",
+      "**Tu redescends les bras devant.** Les bras doivent revenir sur les côtés, pas retomber à travers le filet.",
+    ],
+    fix:
+      "Refais des blocs sans ballon en te concentrant uniquement sur la descente : la faute vient beaucoup plus souvent du retour des bras que de la montée.",
+  },
+  {
+    gestureWords: BLOCK_WORDS,
+    symptomWords: ["entre les mains", "passe entre", "traverse", "trou", "au milieu"],
+    objective: "bloc",
+    title: "Le ballon passe entre tes mains",
+    causes: [
+      "**Tes mains sont trop écartées.** L'écart doit être inférieur au diamètre d'un ballon, pouces presque joints.",
+      "**Tes doigts sont relâchés.** Des mains molles s'ouvrent à l'impact. Doigts écartés et fermes, paumes tournées vers le terrain adverse.",
+      "**Tes bras sont fléchis.** Les coudes doivent rester tendus : un bras plié cède au contact.",
+    ],
+    fix:
+      "Vérifie l'écart de tes mains au sol, immobile, avant de travailler au filet. C'est un réglage, pas une qualité physique.",
+  },
+  {
+    gestureWords: BLOCK_WORDS,
+    symptomWords: ["retard", "trop tard", "jamais a temps", "jamais le temps", "arrive pas", "trop lent"],
+    objective: "bloc",
+    title: "Tu arrives systématiquement en retard au bloc",
+    causes: [
+      "**Tu pars sur le ballon et non sur le passeur.** La lecture commence aux mains du passeur : attendre de voir le ballon partir coûte un temps irrattrapable.",
+      "**Ton déplacement est trop long.** En pas chassés sur les courtes distances, en pas croisés uniquement au-delà de trois mètres.",
+      "**Tu n'es pas en position d'attente.** Démarrer jambes tendues ajoute une demi-seconde.",
+    ],
+    fix:
+      "Pendant une séance entière, force-toi à regarder le passeur et non le ballon. C'est désagréable au début et ça change tout après deux ou trois séances.",
+  },
+  // ----- Détente ---------------------------------------------------------
+  {
+    gestureWords: JUMP_WORDS,
+    symptomWords: ["pas haut", "pas assez haut", "faible", "stagne", "progresse pas", "bas"],
+    objective: "detente",
+    title: "Tu ne sautes pas assez haut",
+    causes: [
+      "**Tes bras ne servent à rien.** Un lancer de bras coordonné apporte à lui seul plusieurs centimètres. S'ils restent en bas, tu sautes avec les jambes uniquement.",
+      "**Ton dernier appui n'est pas freiné.** Sans appui d'arrêt net, la vitesse de course ne se transforme pas en hauteur.",
+      "**Ta descente est trop lente.** La détente vient du cycle étirement-détente : plus le contact au sol est bref, plus tu montes. Un squat lent avant de sauter perd toute l'élasticité.",
+    ],
+    fix:
+      "Filme ton saut de côté. Si tes bras partent après tes jambes, c'est là qu'est ta marge — et c'est la plus rapide à récupérer.",
+  },
+  // ----- Défense ---------------------------------------------------------
+  {
+    gestureWords: DEFENSE_WORDS,
+    symptomWords: [
+      "retard",
+      "trop tard",
+      "arrive pas",
+      "jamais a temps",
+      "jamais le temps",
+      "trop rapide",
+      "trop lent",
+      "pas le temps",
+    ],
+    objective: "defense",
+    title: "Tu n'arrives jamais à temps en défense",
+    causes: [
+      "**Tu es immobile au moment de la frappe.** Un défenseur est déjà bas et en appui avant que l'attaquant frappe, jamais après.",
+      "**Ton poids est sur les talons.** Impossible de démarrer. Le poids doit être sur l'avant des pieds.",
+      "**Tu regardes le ballon.** La direction se lit sur l'épaule et la main de l'attaquant, un temps avant le contact.",
+    ],
+    fix:
+      "Prends la position basse deux secondes avant chaque attaque adverse, même si ça te paraît trop tôt. C'est ce décalage qui fait toute la différence.",
+  },
+  // ----- Écart entraînement / match --------------------------------------
+  {
+    gestureWords: ["match", "matchs", "matches", "competition", "tournoi"],
+    symptomWords: ["rate", "moins bien", "pas pareil", "stress", "stresse", "j'y arrive plus", "jy arrive plus"],
+    objective: "competition",
+    title: "Tu réussis à l'entraînement mais pas en match",
+    causes: [
+      "**Tes entraînements sont trop confortables.** Répéter un geste sans pression ne prépare pas à l'exécuter sous pression. Il faut mettre un enjeu : compter les points, s'imposer une conséquence en cas d'échec.",
+      "**Tu n'as pas de routine.** Sous stress, ce qui tient, c'est l'automatisme. Une routine identique avant chaque service ou réception donne un point d'ancrage.",
+      "**Tu joues pour ne pas rater.** Chercher à éviter la faute crispe le geste et produit exactement la faute redoutée. En match, on choisit une intention, pas une précaution.",
+    ],
+    fix:
+      "À ta prochaine séance, annonce le score à voix haute pendant tes exercices et joue-les comme des balles de match. L'écart entraînement/match se réduit en rendant l'entraînement moins confortable, pas en s'entraînant plus.",
+  },
+];
 
 /**
  * Causes d'échec par geste, classées de la plus fréquente à la moins fréquente.
@@ -273,7 +579,7 @@ const GESTURE_DIAGNOSES: GestureDiagnosis[] = [
   {
     label: "le bloc",
     objective: "bloc",
-    keywords: ["bloc", "blocs", "bloquer", "contre"],
+    keywords: ["bloc", "blocs", "bloqu", "contre"],
     causes: [
       "**Tu sautes trop tôt.** Le bloc part après l'attaquant, pas avec lui. Sauter en même temps veut dire redescendre quand il frappe.",
       "**Les mains ne pénètrent pas.** Des mains qui restent au-dessus du filet renvoient au mieux ; des mains qui passent au-dessus du filet ferment vraiment l'angle.",
@@ -336,12 +642,39 @@ export function findGestureDiagnosisReply(
   exercises: ExerciseTechniqueInfo[],
   username: string
 ): string | null {
+  const normalized = normalizeForMatch(message);
+
+  // 1. Symptôme précis décrit par le joueur. Exiger un mot du geste ET un mot
+  // du symptôme rend la reconnaissance fiable sans imposer de formulation :
+  // « mon service part dans le filet », « pourquoi mes services finissent
+  // toujours dans le filet » et « ça tombe dans le filet quand je sers »
+  // aboutissent tous au même diagnostic.
+  const symptom = SYMPTOM_DIAGNOSES.find(
+    (entry) =>
+      entry.gestureWords.some((word) => normalized.includes(normalizeForMatch(word))) &&
+      entry.symptomWords.some((word) => normalized.includes(normalizeForMatch(word)))
+  );
+
+  if (symptom) {
+    const parts = [
+      `${symptom.title}, ${username}. C'est presque toujours l'une de ces causes :`,
+      symptom.causes.map((cause, index) => `${index + 1}. ${cause}`).join("\n\n"),
+      `**À corriger en premier :** ${symptom.fix}`,
+    ];
+    const exerciseBlock = relatedExercisesBlock(exercises, symptom.objective);
+    if (exerciseBlock) parts.push(exerciseBlock);
+    return parts.join("\n\n");
+  }
+
+  // 2. Le joueur signale un échec sans décrire de symptôme précis : on présente
+  // les causes fréquentes du geste et on le laisse identifier la sienne.
   if (!isDiagnosticQuestion(message)) return null;
 
-  const normalized = normalizeForMatch(message);
   const gesture = GESTURE_DIAGNOSES.find((entry) =>
     entry.keywords.some((keyword) => normalized.includes(normalizeForMatch(keyword)))
   );
+  // Aucun geste reconnu : on ne fabrique pas un diagnostic sur un geste qu'on
+  // n'a pas identifié.
   if (!gesture) return null;
 
   const parts = [
@@ -350,25 +683,33 @@ export function findGestureDiagnosisReply(
     gesture.causes.map((cause, index) => `${index + 1}. ${cause}`).join("\n\n"),
     gesture.selfCheck,
   ];
+  const exerciseBlock = relatedExercisesBlock(exercises, gesture.objective);
+  if (exerciseBlock) parts.push(exerciseBlock);
+  return parts.join("\n\n");
+}
 
-  // Exercices tirés de la bibliothèque réelle du joueur : jamais inventés.
+/**
+ * Trois exercices de la bibliothèque réelle du joueur pour cet objectif.
+ * Jamais inventés : si le catalogue n'en contient aucun, on ne propose rien.
+ */
+function relatedExercisesBlock(exercises: ExerciseTechniqueInfo[], objective: string): string | null {
   const related = exercises
-    .filter((exercise) => exercise.objective === gesture.objective)
+    .filter((exercise) => exercise.objective === objective)
     .sort((a, b) => a.name.localeCompare(b.name, "fr"))
     .slice(0, 3);
+  if (related.length === 0) return null;
 
-  if (related.length > 0) {
-    const list = related
-      .map((exercise) => {
-        const hint = firstSentence(exercise.tips);
-        return hint ? `• **${exercise.name}** — ${hint}` : `• **${exercise.name}**`;
-      })
-      .join("\n");
-    parts.push(`Pour travailler ça concrètement, dans ta bibliothèque :\n${list}`);
-    parts.push(`Tu les retrouves dans Entraînement → Bibliothèque, ou en lançant une séance ciblée sur ce point.`);
-  }
+  const list = related
+    .map((exercise) => {
+      const hint = firstSentence(exercise.tips);
+      return hint ? `• **${exercise.name}** — ${hint}` : `• **${exercise.name}**`;
+    })
+    .join("\n");
 
-  return parts.join("\n\n");
+  return (
+    `Pour travailler ça concrètement, dans ta bibliothèque :\n${list}\n\n` +
+    `Tu les retrouves dans Entraînement → Bibliothèque, ou en lançant une séance ciblée sur ce point.`
+  );
 }
 
 const TECHNIQUE_TRIGGER_WORDS = [

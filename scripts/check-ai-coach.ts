@@ -78,7 +78,55 @@ check("les conseils listés restent courts (une consigne, pas tout le bloc)",
   (d1 ?? "").split("\n").filter((l) => l.startsWith("•")).every((l) => l.length < 160),
   (d1 ?? "").split("\n").filter((l) => l.startsWith("•")).map((l) => l.length).join("/"));
 
+// --- Diagnostics par symptôme précis -------------------------------------
+const symptomCases: [string, string][] = [
+  ["mon service part dans le filet", "tombe dans le filet"],
+  ["pourquoi mes services finissent toujours dans le filet", "tombe dans le filet"],
+  ["quand je sers ca tombe dans le filet", "tombe dans le filet"],
+  ["mes services sortent tout le temps", "sort derrière"],
+  ["mon service est trop mou", "manque de puissance"],
+  ["pourquoi mes attaques vont dans le filet", "finissent dans le filet"],
+  ["mes smash sortent a chaque fois", "sortent"],
+  ["je me fais bloquer systematiquement", "bloquer"],
+  ["mes receptions partent n'importe ou", "n'importe où"],
+  ["pourquoi quand je fais des manchettes ca part trop loin derriere", "trop loin derrière"],
+  ["mes receptions sont trop courtes", "trop courtes"],
+  ["l'arbitre siffle mes passes", "tenus"],
+  ["mes passes sont trop courtes", "trop courtes"],
+  ["je touche le filet quand je bloque", "touches le filet"],
+  ["le ballon passe entre mes mains au bloc", "entre tes mains"],
+  ["j'arrive toujours en retard au bloc", "en retard"],
+  ["je saute pas assez haut", "pas assez haut"],
+  ["en defense j'arrive jamais a temps", "jamais à temps"],
+  ["en match je rate tout alors qu'a l'entrainement ca va", "match"],
+];
+
+for (const [question, expected] of symptomCases) {
+  const r = findGestureDiagnosisReply(question, catalog, "Nyoko");
+  check(`« ${question} »`, (r ?? "").includes(expected), (r ?? "null").slice(0, 70));
+}
+
+// Une réponse par symptôme doit donner une correction prioritaire
+const sym = findGestureDiagnosisReply("mon service part dans le filet", catalog, "Nyoko");
+check("une réponse par symptôme propose une correction prioritaire",
+  (sym ?? "").includes("À corriger en premier"));
+check("→ et reste adossée à la bibliothèque",
+  (sym ?? "").includes("Services flottants ciblés"));
+check("→ sans citer d'exercice d'un autre domaine",
+  !(sym ?? "").includes("Manchettes au mur") && !(sym ?? "").includes("Squats sautés"));
+
+// Un symptôme ne doit pas être détourné vers la fiche technique
+check("« mon service part dans le filet » ne renvoie pas une fiche technique",
+  findExerciseTechniqueReply("mon service part dans le filet", catalog) === null);
+
+// Pas de faux positif sur une phrase anodine
+check("« j'ai fait 30 services hier » ne déclenche aucun diagnostic",
+  findGestureDiagnosisReply("j'ai fait 30 services hier", catalog, "Nyoko") === null,
+  String(findGestureDiagnosisReply("j'ai fait 30 services hier", catalog, "Nyoko")).slice(0, 50));
+
 console.log("\n--- aperçu de la réponse ---\n");
 console.log(d1);
+console.log("\n--- aperçu d'un diagnostic par symptôme ---\n");
+console.log(sym);
 console.log(fails === 0 ? "\nTOUS LES CAS PASSENT" : `\n${fails} CAS EN ÉCHEC`);
 process.exit(fails === 0 ? 0 : 1);
