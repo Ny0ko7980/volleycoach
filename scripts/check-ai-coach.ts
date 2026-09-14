@@ -10,6 +10,7 @@
 
 import {
   findGestureDiagnosisReply,
+  findImprovementReply,
   findExerciseTechniqueReply,
   isDiagnosticQuestion,
 } from "../supabase/functions/ai-coach/rulesEngine";
@@ -21,6 +22,14 @@ const catalog = [
   { name: "Squats sautés", objective: "detente", instructions: "Descends en squat puis explose...", common_mistakes: "Genoux rentrants", tips: "Réceptionne en souplesse" },
   { name: "Services flottants ciblés", objective: "service", instructions: "Vise les zones 1 et 5...", common_mistakes: null, tips: "Même lancer à chaque fois" },
 ];
+
+
+// Les réponses structurées renvoient { text, suggestedSkill } : ces deux
+// aides ramènent au texte pour garder les contrôles lisibles.
+const diag = (m: string, c: typeof catalog, u: string) =>
+  findGestureDiagnosisReply(m, c, u)?.text ?? null;
+const impr = (m: string, c: typeof catalog, u: string) =>
+  findImprovementReply(m, c, u)?.text ?? null;
 
 let fails = 0;
 function check(name: string, ok: boolean, detail = "") {
@@ -34,7 +43,7 @@ check("« pourquoi je rate mes manchettes » est vu comme un diagnostic", isDiag
 check("→ ne renvoie PAS la fiche technique", findExerciseTechniqueReply(q1, catalog) === null,
   String(findExerciseTechniqueReply(q1, catalog)).slice(0, 60));
 
-const d1 = findGestureDiagnosisReply(q1, catalog, "Nyoko");
+const d1 = diag(q1, catalog, "Nyoko");
 check("→ renvoie un diagnostic", d1 !== null);
 check("→ explique des causes numérotées", (d1 ?? "").includes("1.") && (d1 ?? "").includes("plateforme"),
   (d1 ?? "").slice(0, 80));
@@ -46,7 +55,7 @@ check("→ n'invente aucun exercice absent du catalogue",
 const q2 = "comment bien faire des squats sautés";
 check("« comment faire des squats sautés » reste une fiche technique",
   (findExerciseTechniqueReply(q2, catalog) ?? "").includes("Squats sautés"));
-check("→ et n'est pas pris pour un diagnostic", findGestureDiagnosisReply(q2, catalog, "Nyoko") === null);
+check("→ et n'est pas pris pour un diagnostic", diag(q2, catalog, "Nyoko") === null);
 
 // L'ancien correctif (sans mot déclencheur) doit tenir
 check("« faire des squats sautés » marche encore sans « comment »",
@@ -66,13 +75,13 @@ for (const [q, expected] of [
   ["j'ai du mal au bloc", "le bloc"],
   ["pourquoi mes passes sont mauvaises", "la passe"],
 ] as [string, string][]) {
-  const r = findGestureDiagnosisReply(q, catalog, "Nyoko");
+  const r = diag(q, catalog, "Nyoko");
   check(`« ${q} » → ${expected}`, (r ?? "").includes(expected), (r ?? "null").slice(0, 60));
 }
 
 // Geste inconnu : on n'invente pas
 check("« pourquoi je suis nul » sans geste identifié → pas de diagnostic inventé",
-  findGestureDiagnosisReply("pourquoi je suis nul", catalog, "Nyoko") === null);
+  diag("pourquoi je suis nul", catalog, "Nyoko") === null);
 
 check("les conseils listés restent courts (une consigne, pas tout le bloc)",
   (d1 ?? "").split("\n").filter((l) => l.startsWith("•")).every((l) => l.length < 160),
@@ -102,7 +111,7 @@ const symptomCases: [string, string][] = [
 ];
 
 for (const [question, expected] of symptomCases) {
-  const r = findGestureDiagnosisReply(question, catalog, "Nyoko");
+  const r = diag(question, catalog, "Nyoko");
   check(`« ${question} »`, (r ?? "").includes(expected), (r ?? "null").slice(0, 70));
 }
 
@@ -115,24 +124,24 @@ const backSetCases: [string, string][] = [
   ["j'arrive pas a passer derriere", "passe arrière"],
 ];
 for (const [question, expected] of backSetCases) {
-  const r = findGestureDiagnosisReply(question, catalog, "Nyoko");
+  const r = diag(question, catalog, "Nyoko");
   check(`« ${question} »`, (r ?? "").includes(expected), (r ?? "null").slice(0, 70));
 }
 
-const back = findGestureDiagnosisReply("mes passes arriere sont trop courtes", catalog, "Nyoko");
+const back = diag("mes passes arriere sont trop courtes", catalog, "Nyoko");
 check("la passe arrière cite sa cause propre (on passe sans voir)",
   (back ?? "").includes("cambres") || (back ?? "").includes("repéré"));
 check("la passe avant garde bien son propre diagnostic",
-  (findGestureDiagnosisReply("mes passes sont trop courtes", catalog, "Nyoko") ?? "")
+  (diag("mes passes sont trop courtes", catalog, "Nyoko") ?? "")
     .includes("Tes passes sont trop courtes"));
 check("→ et n'est pas capturée par la passe arrière",
-  !(findGestureDiagnosisReply("mes passes sont trop courtes", catalog, "Nyoko") ?? "")
+  !(diag("mes passes sont trop courtes", catalog, "Nyoko") ?? "")
     .includes("passes arrière"));
 check("« je recule derriere la ligne » ne déclenche pas la passe arrière",
-  findGestureDiagnosisReply("je recule derriere la ligne", catalog, "Nyoko") === null);
+  diag("je recule derriere la ligne", catalog, "Nyoko") === null);
 
 // Une réponse par symptôme doit donner une correction prioritaire
-const sym = findGestureDiagnosisReply("mon service part dans le filet", catalog, "Nyoko");
+const sym = diag("mon service part dans le filet", catalog, "Nyoko");
 check("une réponse par symptôme propose une correction prioritaire",
   (sym ?? "").includes("À corriger en premier"));
 check("→ et reste adossée à la bibliothèque",
@@ -146,8 +155,52 @@ check("« mon service part dans le filet » ne renvoie pas une fiche technique",
 
 // Pas de faux positif sur une phrase anodine
 check("« j'ai fait 30 services hier » ne déclenche aucun diagnostic",
-  findGestureDiagnosisReply("j'ai fait 30 services hier", catalog, "Nyoko") === null,
-  String(findGestureDiagnosisReply("j'ai fait 30 services hier", catalog, "Nyoko")).slice(0, 50));
+  diag("j'ai fait 30 services hier", catalog, "Nyoko") === null,
+  String(diag("j'ai fait 30 services hier", catalog, "Nyoko")).slice(0, 50));
+
+// --- Questions de progression : le coach répond en coach, pas en fiche ----
+const jumpCatalog = [
+  ...catalog,
+  { name: "Détente en contre-mouvement", objective: "detente", instructions: "", common_mistakes: null, tips: "Contact au sol bref." },
+];
+
+check("« comment améliorer ma détente » ne renvoie pas une fiche d'exercice",
+  findExerciseTechniqueReply("comment améliorer ma détente", jumpCatalog) === null,
+  String(findExerciseTechniqueReply("comment améliorer ma détente", jumpCatalog)).slice(0, 50));
+
+const jump = findImprovementReply("comment améliorer ma détente", jumpCatalog, "Nyoko");
+check("→ renvoie les leviers de progression", (jump?.text ?? "").includes("technique de saut"));
+check("→ dit par quoi commencer", (jump?.text ?? "").includes("Par quoi commencer"));
+check("→ propose une séance ciblée", (jump?.text ?? "").includes("séance ciblée sur ta détente"));
+check("→ expose la compétence à l'application", jump?.suggestedSkill === "detente", String(jump?.suggestedSkill));
+check("→ porte le garde-fou blessure (travail à impact)",
+  (jump?.text ?? "").includes("professionnel de santé"));
+check("→ cite des exercices de la bibliothèque", (jump?.text ?? "").includes("Squats sautés"));
+
+const improvementCases: [string, string][] = [
+  ["comment progresser en reception", "ta réception"],
+  ["je veux travailler mon service", "ton service"],
+  ["des conseils pour mieux attaquer", "ton attaque"],
+  ["comment ameliorer mes deplacements", "tes déplacements"],
+  ["comment me muscler pour le volley", "ton physique"],
+  ["je veux gagner en souplesse", "ta mobilité"],
+  ["comment tenir un match entier", "ton endurance"],
+];
+for (const [question, expected] of improvementCases) {
+  check(`« ${question} » → ${expected}`, (impr(question, jumpCatalog, "Nyoko") ?? "").includes(expected),
+    (impr(question, jumpCatalog, "Nyoko") ?? "null").slice(0, 60));
+}
+
+check("une question de progression sans compétence identifiée ne répond rien",
+  impr("je veux progresser", catalog, "Nyoko") === null);
+check("« comment bien faire des squats sautés » reste une fiche technique",
+  impr("comment bien faire des squats sautés", jumpCatalog, "Nyoko") === null);
+
+// Les diagnostics proposent aussi la séance
+const diagSuggestion = findGestureDiagnosisReply("pourquoi je rate mes manchettes", catalog, "Nyoko");
+check("un diagnostic propose aussi une séance ciblée",
+  diagSuggestion?.suggestedSkill === "reception", String(diagSuggestion?.suggestedSkill));
+check("→ et le dit dans le texte", (diagSuggestion?.text ?? "").includes("séance ciblée"));
 
 console.log("\n--- aperçu de la réponse ---\n");
 console.log(d1);

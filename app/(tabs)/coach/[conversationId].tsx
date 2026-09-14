@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Send } from "lucide-react-native";
 import { ChatBubble } from "@/components/chat/ChatBubble";
+import { SessionSuggestion } from "@/components/chat/SessionSuggestion";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { fetchMessages, sendMessageToCoach } from "@/services/aiCoachService";
@@ -13,6 +14,7 @@ import { errorMessage } from "@/utils/errors";
 
 export default function ChatScreen() {
   const { theme } = useAppTheme();
+  const router = useRouter();
   const { conversationId, prefill } = useLocalSearchParams<{ conversationId: string; prefill?: string }>();
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +72,22 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => <ChatBubble role={item.role} content={item.content} />}
+          renderItem={({ item }) => (
+            <View>
+              <ChatBubble role={item.role} content={item.content} />
+              {item.suggested_skill ? (
+                <SessionSuggestion
+                  label={item.suggested_label ?? "ce point"}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/training/generate",
+                      params: { skill: item.suggested_skill as string },
+                    })
+                  }
+                />
+              ) : null}
+            </View>
+          )}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         />
         {sending ? <Text style={[styles.typing, { color: theme.textMuted }]}>Le Coach IA réfléchit...</Text> : null}

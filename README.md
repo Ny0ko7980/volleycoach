@@ -54,6 +54,7 @@ Depuis le dashboard Supabase → SQL Editor, exécute dans l'ordre :
 9. `supabase/migrations/0009_exercise_library_seed.sql` — bibliothèque de 300 exercices (fichier **généré**, voir ci-dessous)
 10. `supabase/migrations/0010_remove_exercise_media.sql` — retire les vidéos de la 0007 : plusieurs interdisaient l'intégration (erreur 152), ce qui affichait un cadre d'erreur dans la fiche
 11. `supabase/migrations/0011_training_personalization.sql` — entraînements personnalisés : préférences du joueur, ressenti par exercice et par séance, scores de compétence, signaux de compétence
+12. `supabase/migrations/0012_coach_session_suggestion.sql` — proposition de séance jointe aux réponses du Coach IA
 
 ### Vidéos d'exercice
 

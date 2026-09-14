@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Text, View, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
@@ -37,8 +37,13 @@ export default function ChooseWorkoutScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
   const { profile, updateLocal } = useProfileStore();
+  // Compétence présélectionnée quand le joueur arrive depuis une proposition
+  // du Coach IA : il ne doit pas avoir à re-choisir ce dont on vient de parler.
+  const { skill: skillParam } = useLocalSearchParams<{ skill?: string }>();
 
-  const [skill, setSkill] = useState<TrainingSkill | null>(null);
+  const [skill, setSkill] = useState<TrainingSkill | null>(
+    SKILLS.some((item) => item.value === skillParam) ? (skillParam as TrainingSkill) : null
+  );
   const [duration, setDuration] = useState(profile?.preferred_duration_minutes ?? 45);
   const [intensity, setIntensity] = useState<Intensity | null>(null);
   const [equipment, setEquipment] = useState<string[]>(profile?.available_equipment ?? []);

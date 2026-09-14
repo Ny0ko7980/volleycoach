@@ -233,6 +233,243 @@ export function isDiagnosticQuestion(message: string): boolean {
 }
 
 /**
+ * Leviers de progression par compétence.
+ *
+ * Répondre « comment améliorer ma détente ? » par le mode d'emploi d'un
+ * exercice, c'est répondre à côté : la question porte sur ce qu'il faut
+ * travailler, pas sur la façon d'exécuter un mouvement. Chaque entrée dit
+ * donc d'abord sur quoi agir, et par quoi commencer — les exercices viennent
+ * après, en illustration.
+ *
+ * Les leviers sont classés par rentabilité : le premier est celui qui fait
+ * gagner le plus vite, pas le plus impressionnant.
+ */
+interface SkillLevers {
+  label: string;
+  objective: string;
+  /** Compétence correspondante côté application, pour proposer une séance. */
+  skill: string;
+  keywords: string[];
+  keywordPairs?: string[][];
+  levers: string[];
+  startHere: string;
+  /** Ajoute le garde-fou blessure (travail à fort impact). */
+  highImpact?: boolean;
+}
+
+const SKILL_LEVERS: SkillLevers[] = [
+  {
+    label: "ta détente",
+    skill: "detente",
+    objective: "detente",
+    keywords: ["detente", "sauter", "saut", "sauts", "impulsion", "verticale", "monter plus haut"],
+    highImpact: true,
+    levers: [
+      "**La technique de saut.** C'est le levier le plus rentable et presque toujours le plus négligé : un lancer de bras coordonné et un dernier appui bien freiné font gagner plusieurs centimètres sans le moindre progrès physique. Ça se règle en quelques séances.",
+      "**La force des jambes.** C'est la base sur laquelle tout le reste s'appuie. Sans force, il n'y a rien à convertir en hauteur. Squats, fentes, montées de banc.",
+      "**L'explosivité.** Convertir cette force en saut passe par des contacts au sol très brefs : sauts courts, rebonds, corde à sauter. C'est ce qui fait la différence entre être fort et sauter haut.",
+      "**La mobilité de cheville.** Une cheville raide t'empêche de descendre assez pour armer le saut. C'est un frein invisible, et c'est le plus rapide à lever.",
+      "**La récupération.** La détente se construit au repos, pas dans le volume. Deux séances de sauts par semaine au maximum, jamais deux jours de suite.",
+    ],
+    startHere:
+      "Commence par la technique et la mobilité : ce sont les deux seuls leviers qui donnent des résultats en deux ou trois semaines. La force et l'explosivité, elles, se comptent en mois.",
+  },
+  {
+    label: "ta réception",
+    skill: "reception",
+    objective: "reception",
+    keywords: ["reception", "receptionner", "manchette", "manchettes"],
+    levers: [
+      "**La lecture et le départ.** Les bonnes réceptions se jouent avant le contact : partir à la frappe adverse, pas quand le ballon arrive.",
+      "**La stabilité de la plateforme.** Bras verrouillés, angle constant du début à la fin. C'est ce qui transforme une réception aléatoire en réception répétable.",
+      "**Le jeu de jambes.** Arriver avant le ballon et être arrêté au contact. La direction se perd presque toujours parce qu'on touche en mouvement.",
+      "**L'orientation des épaules.** Le ballon repart dans l'axe de ta plateforme : les épaules se tournent vers le passeur avant le contact, jamais pendant.",
+      "**Le volume.** La réception est un geste d'automatisme. Le mur est imbattable pour ça : des centaines de répétitions seul, sans partenaire.",
+    ],
+    startHere:
+      "Si tu ne dois travailler qu'une chose : arriver arrêté. Accepte de renvoyer moins fort mais d'être stable, le reste suivra tout seul.",
+  },
+  {
+    label: "ton service",
+    skill: "service",
+    objective: "service",
+    keywords: ["service", "servir", "sers", "engagement"],
+    levers: [
+      "**La régularité du lancer.** C'est le levier numéro un, et de très loin. Un service irrégulier est presque toujours un lancer irrégulier. Ça se travaille seul, sans même frapper.",
+      "**Le point de contact.** Bras tendu, au point le plus haut, derrière le ballon. Frapper plus bas coûte de la marge sur toute la trajectoire.",
+      "**Le transfert du poids.** La puissance vient du déplacement du corps vers l'avant, pas de la force du bras. C'est aussi ce qui protège l'épaule.",
+      "**Le ciblage.** Servir fort sans viser ne sert à rien. Travailler des zones précises rend le service utile en match.",
+      "**La routine.** Sous pression, seul l'automatisme tient. Même préparation, même nombre de rebonds, même rythme à chaque service.",
+    ],
+    startHere:
+      "Commence par vingt lancers sans frapper, en cherchant à faire retomber le ballon toujours au même endroit. C'est austère, et c'est ce qui change le plus de choses.",
+  },
+  {
+    label: "ton attaque",
+    skill: "attaque",
+    objective: "attaque",
+    keywords: ["attaque", "attaquer", "smash", "smasher", "frapper fort", "spike"],
+    highImpact: true,
+    levers: [
+      "**La course d'élan.** Un élan bien réglé, avec un dernier appui freiné, donne à la fois la hauteur et le placement sous le ballon. C'est la fondation de tout le reste.",
+      "**L'armé précoce.** Le bras doit être armé pendant la montée, pas une fois en l'air. Un armé tardif fait frapper le ballon déjà descendu.",
+      "**Le fouetté du poignet.** C'est lui qui fait retomber le ballon dans le terrain. Sans lui, il faut brider la frappe pour ne pas sortir.",
+      "**La lecture du bloc.** Voir les mains adverses pendant la montée permet de choisir. Sans ça, tu frappes au hasard.",
+      "**La variété.** Ligne, diagonale, amorti : un attaquant prévisible se fait bloquer quelle que soit sa puissance.",
+    ],
+    startHere:
+      "Règle la course d'élan avant tout le reste. La puissance et la variété ne servent à rien si tu arrives mal placé sous le ballon.",
+  },
+  {
+    label: "ton bloc",
+    skill: "bloc",
+    objective: "bloc",
+    keywords: ["bloc", "bloqu", "contrer"],
+    highImpact: true,
+    levers: [
+      "**La lecture du passeur.** Le bloc commence aux mains du passeur. C'est ce qui sépare un bloc qui arrive à temps d'un bloc qui court après le ballon.",
+      "**Le déplacement.** Pas chassés sur les courtes distances, pas croisés au-delà de trois mètres, et toujours un appui d'arrêt avant de sauter.",
+      "**Le timing.** On part après l'attaquant, jamais avec lui. C'est contre-intuitif et c'est la faute la plus fréquente.",
+      "**La pénétration des mains.** Passer les mains au-dessus du filet plutôt que de les laisser en dessous change complètement l'efficacité.",
+      "**La détente sans élan.** Le bloc se saute à l'arrêt : c'est une qualité différente de la détente d'attaque, et elle se travaille à part.",
+    ],
+    startHere:
+      "Pendant une séance entière, force-toi à regarder le passeur et non le ballon. C'est désagréable au début, et ça règle le timing plus vite que n'importe quel exercice physique.",
+  },
+  {
+    label: "ta passe",
+    skill: "passe",
+    objective: "precision",
+    keywords: ["passe", "passer", "passeur", "touche haute", "distribuer"],
+    levers: [
+      "**Le placement sous le ballon.** Une passe précise est d'abord un déplacement réussi. Les mains ne rattrapent jamais un mauvais placement.",
+      "**Le contact bref.** Repousser au lieu d'accompagner : c'est ce qui évite les ballons tenus et donne de la vitesse à la passe.",
+      "**Le transfert des jambes.** La distance vient des jambes et du tronc, pas des doigts. Les passes courtes sont presque toujours des passes sans appui arrière.",
+      "**La régularité de la hauteur.** Un attaquant a besoin de la même passe à chaque fois. La constance vaut mieux que la variété tant qu'elle n'est pas acquise.",
+      "**La passe arrière.** Elle se travaille séparément : on y passe sans voir la cible, donc tout se joue sur l'information prise avant.",
+    ],
+    startHere:
+      "Travaille au mur en passes courtes et sèches. L'enchaînement rapide corrige à la fois le contact trop long et le placement.",
+  },
+  {
+    label: "ta défense",
+    skill: "defense",
+    objective: "defense",
+    keywords: ["defense", "defendre", "recuperer des ballons", "plongeon"],
+    levers: [
+      "**La position d'attente.** Être déjà bas, poids sur l'avant des pieds, avant que l'attaquant frappe. Tout le reste en découle.",
+      "**La lecture de l'attaquant.** La direction se lit sur l'épaule et la main, un temps avant le contact. Attendre de voir le ballon, c'est partir en retard.",
+      "**Le premier appui.** La défense se joue sur un pas, pas sur une course.",
+      "**La technique au sol.** Savoir se laisser tomber et se relever vite permet d'oser des ballons qu'on laisserait sinon.",
+      "**Le réengagement.** Une défense n'est finie que lorsque tu es replacé pour la suivante.",
+    ],
+    startHere:
+      "Prends la position basse deux secondes avant chaque attaque adverse, même si ça te paraît trop tôt. C'est le réglage qui rapporte le plus.",
+  },
+  {
+    label: "tes déplacements",
+    skill: "deplacements",
+    objective: "vitesse",
+    keywords: ["deplacement", "deplacements", "appuis", "vitesse", "rapidite", "etre plus rapide", "agilite"],
+    levers: [
+      "**La position d'attente.** Démarrer jambes tendues coûte une demi-seconde, ce qui suffit à arriver en retard sur tout.",
+      "**Le premier appui.** La vitesse au volley se joue sur le premier pas, jamais sur la course. C'est ça qu'il faut travailler.",
+      "**Le choix du pas.** Pas chassés sur les courtes distances, pas croisés au-delà : croiser sur trois mètres fait perdre l'équilibre à l'arrivée.",
+      "**Le freinage.** Savoir s'arrêter net compte autant que savoir partir vite — sans appui d'arrêt, tu dépasses le ballon.",
+      "**La vitesse de réaction.** Partir sur un signal, pas sur une décision consciente.",
+    ],
+    startHere:
+      "Travaille des départs sur trois mètres depuis la position basse. C'est court, peu fatigant, et c'est exactement la distance du volley.",
+  },
+  {
+    label: "ton physique",
+    skill: "renforcement",
+    objective: "global",
+    keywords: ["physique", "renforcement", "muscler", "musculation", "plus fort", "condition"],
+    levers: [
+      "**La base de force.** Jambes et chaîne postérieure d'abord : c'est ce qui soutient le saut, les appuis et la protection des articulations.",
+      "**Le gainage.** Le tronc transmet la force des jambes aux bras. Un gainage faible fait perdre en route ce que les jambes produisent.",
+      "**L'équilibre du corps.** Au volley, l'épaule encaisse beaucoup : la renforcer et travailler la coiffe des rotateurs n'est pas optionnel.",
+      "**La prévention.** Chevilles et genoux sont les zones à risque du volley. Les renforcer coûte peu et évite les arrêts longs.",
+      "**La progressivité.** Les blessures viennent presque toujours d'une charge augmentée trop vite, rarement d'un exercice mal choisi.",
+    ],
+    startHere:
+      "Deux séances par semaine suffisent largement. Le volley reste la priorité : le physique est là pour le servir, pas l'inverse.",
+  },
+  {
+    label: "ta mobilité",
+    skill: "mobilite",
+    objective: "global",
+    keywords: ["mobilite", "souplesse", "etirement", "etirements", "raide", "amplitude"],
+    levers: [
+      "**Les chevilles.** Elles conditionnent la profondeur de tes appuis, donc ton saut et ta défense. C'est la zone la plus rentable au volley.",
+      "**Les hanches.** Sans amplitude, impossible de tenir une position basse sans compenser avec le dos.",
+      "**Les épaules.** Amplitude et santé de l'épaule vont ensemble quand on frappe des centaines de ballons.",
+      "**Le rythme.** Dynamique avant la séance, statique après ou à distance. S'étirer longuement avant de jouer diminue la puissance.",
+      "**La régularité.** Dix minutes tous les jours valent mieux qu'une heure le dimanche.",
+    ],
+    startHere:
+      "Commence par les chevilles : c'est celle qui débloque le plus de choses ailleurs, et elle se gagne vite.",
+  },
+  {
+    label: "ton endurance",
+    skill: "renforcement",
+    objective: "regularite",
+    keywords: ["endurance", "fatigue", "essouffle", "tenir le match", "tenir un match", "souffle"],
+    levers: [
+      "**L'endurance de saut.** C'est elle qui lâche en fin de match, pas le souffle. Elle se travaille en répétant des séries de sauts, pas en courant.",
+      "**L'intermittent.** Le volley est fait d'efforts courts et intenses entrecoupés de pauses. Un footing long prépare mal à ça.",
+      "**La récupération entre les points.** Savoir faire redescendre le rythme cardiaque en quelques secondes se travaille comme le reste.",
+      "**La lucidité sous fatigue.** Les fautes de fin de match sont plus souvent des fautes de décision que de jambes : s'entraîner fatigué habitue à ça.",
+    ],
+    startHere:
+      "Termine tes séances par un bloc court d'efforts intermittents plutôt que par du footing. C'est plus spécifique et moins long.",
+  },
+];
+
+/**
+ * Marqueurs d'une question de progression : « comment améliorer ma détente »,
+ * « je veux progresser en réception », « comment travailler mon service ».
+ */
+const IMPROVEMENT_MARKERS = [
+  "ameliorer",
+  "ameliore",
+  "progresser",
+  "progression",
+  "travailler",
+  "bosser",
+  "developper",
+  "augmenter",
+  "gagner en",
+  "devenir meilleur",
+  "etre meilleur",
+  "plus fort en",
+  "comment avoir",
+  "comment faire pour",
+  "je veux",
+  "j'aimerais",
+  "jaimerais",
+  "muscler",
+  "renforcer",
+  "des conseils",
+  "conseils pour",
+  // Formulations qui expriment un objectif sans employer de verbe de
+  // progression. « comment » seul serait trop large : il attraperait les
+  // questions de technique (« comment bien faire des squats sautés »).
+  "tenir un match",
+  "tenir le match",
+  "tenir tout le match",
+  "comment tenir",
+  "comment eviter",
+  "comment ne plus",
+];
+
+export function isImprovementQuestion(message: string): boolean {
+  const normalized = normalizeForMatch(message);
+  return IMPROVEMENT_MARKERS.some((marker) => normalized.includes(normalizeForMatch(marker)));
+}
+
+/**
  * Diagnostics par symptôme précis.
  *
  * « Mon service part dans le filet » et « mon service sort » ne partagent
@@ -693,11 +930,96 @@ function firstSentence(text: string | null): string | null {
  * Renvoie `null` si aucun geste connu n'est reconnu — on ne fabrique pas un
  * diagnostic sur un geste qu'on n'a pas identifié.
  */
+/**
+ * Réponse du coach, éventuellement accompagnée d'une proposition de séance.
+ *
+ * `suggestedSkill` reprend le vocabulaire des catégories d'exercices de
+ * l'application : l'écran de chat peut ainsi proposer un bouton qui lance
+ * directement une séance ciblée sur ce point.
+ */
+export interface CoachReply {
+  text: string;
+  suggestedSkill?: string;
+  suggestedLabel?: string;
+}
+
+/**
+ * Objectif d'entraînement (colonne `exercises.objective`) → compétence de
+ * l'application. Les deux vocabulaires ne coïncident pas partout : une passe
+ * relève de l'objectif « précision », un travail de vitesse de la compétence
+ * « déplacements ».
+ */
+const OBJECTIVE_TO_APP_SKILL: Record<string, string> = {
+  reception: "reception",
+  defense: "defense",
+  attaque: "attaque",
+  service: "service",
+  bloc: "bloc",
+  detente: "detente",
+  precision: "passe",
+  vitesse: "deplacements",
+  regularite: "lecture_jeu",
+};
+
+function sessionOffer(label: string): string {
+  return (
+    `Tu veux que je te prépare une séance ciblée sur ${label} ? ` +
+    `Je la construis avec les exercices de ta bibliothèque adaptés à ton poste et à ton niveau.`
+  );
+}
+
+/**
+ * Répond à une question de progression : sur quoi travailler pour avancer,
+ * dans quel ordre, et avec quels exercices.
+ *
+ * C'est la réponse attendue pour « comment améliorer ma détente ? » — une
+ * fiche d'exécution d'exercice serait hors sujet.
+ */
+export function findImprovementReply(
+  message: string,
+  exercises: ExerciseTechniqueInfo[],
+  username: string
+): CoachReply | null {
+  if (!isImprovementQuestion(message)) return null;
+
+  const normalized = normalizeForMatch(message);
+  const skill = SKILL_LEVERS.find(
+    (entry) =>
+      entry.keywords.some((keyword) => normalized.includes(normalizeForMatch(keyword))) ||
+      (entry.keywordPairs ?? []).some((pair) =>
+        pair.every((keyword) => normalized.includes(normalizeForMatch(keyword)))
+      )
+  );
+  // Sans compétence identifiée, on ne récite pas des généralités : la question
+  // ouverte est renvoyée au moteur de règles, qui demande une précision.
+  if (!skill) return null;
+
+  const parts = [
+    `Pour progresser sur ${skill.label}, ${username}, il y a plusieurs leviers — et ils ne se valent pas. ` +
+      `Les voici du plus rentable au plus long à payer :`,
+    skill.levers.map((lever, index) => `${index + 1}. ${lever}`).join("\n\n"),
+    `**Par quoi commencer :** ${skill.startHere}`,
+  ];
+
+  if (skill.highImpact) parts.push(SAFETY_NOTICE);
+
+  const exerciseBlock = relatedExercisesBlock(exercises, skill.objective);
+  if (exerciseBlock) parts.push(exerciseBlock);
+
+  parts.push(sessionOffer(skill.label));
+
+  return {
+    text: parts.join("\n\n"),
+    suggestedSkill: skill.skill,
+    suggestedLabel: skill.label,
+  };
+}
+
 export function findGestureDiagnosisReply(
   message: string,
   exercises: ExerciseTechniqueInfo[],
   username: string
-): string | null {
+): CoachReply | null {
   const normalized = normalizeForMatch(message);
 
   // 1. Symptôme précis décrit par le joueur. Exiger un mot du geste ET un mot
@@ -722,7 +1044,12 @@ export function findGestureDiagnosisReply(
     ];
     const exerciseBlock = relatedExercisesBlock(exercises, symptom.objective);
     if (exerciseBlock) parts.push(exerciseBlock);
-    return parts.join("\n\n");
+
+    const symptomSkill = OBJECTIVE_TO_APP_SKILL[symptom.objective];
+    const symptomLabel = skillLabelFor(symptom.objective);
+    if (symptomSkill && symptomLabel) parts.push(sessionOffer(symptomLabel));
+
+    return { text: parts.join("\n\n"), suggestedSkill: symptomSkill, suggestedLabel: symptomLabel };
   }
 
   // 2. Le joueur signale un échec sans décrire de symptôme précis : on présente
@@ -748,7 +1075,16 @@ export function findGestureDiagnosisReply(
   ];
   const exerciseBlock = relatedExercisesBlock(exercises, gesture.objective);
   if (exerciseBlock) parts.push(exerciseBlock);
-  return parts.join("\n\n");
+
+  const gestureSkill = OBJECTIVE_TO_APP_SKILL[gesture.objective];
+  if (gestureSkill) parts.push(sessionOffer(gesture.label));
+
+  return { text: parts.join("\n\n"), suggestedSkill: gestureSkill, suggestedLabel: gesture.label };
+}
+
+/** Libellé lisible d'un objectif, repris des leviers de progression. */
+function skillLabelFor(objective: string): string | undefined {
+  return SKILL_LEVERS.find((entry) => entry.objective === objective)?.label;
 }
 
 /**
@@ -809,10 +1145,12 @@ function stem(word: string): string {
 export function findExerciseTechniqueReply(message: string, exercises: ExerciseTechniqueInfo[]): string | null {
   if (exercises.length === 0) return null;
 
-  // « Pourquoi je rate mes manchettes ? » mentionne un exercice sans demander
-  // comment l'exécuter. Répondre par sa fiche technique serait hors sujet :
-  // le diagnostic est traité ailleurs.
-  if (isDiagnosticQuestion(message)) return null;
+  // « Pourquoi je rate mes manchettes ? » et « comment améliorer ma détente ? »
+  // mentionnent un geste sans demander comment l'exécuter. Répondre par une
+  // fiche technique serait hors sujet : ces questions sont traitées ailleurs.
+  // Le garde est ici en plus de l'ordre d'appel, pour qu'un futur changement
+  // d'ordre ne réintroduise pas le défaut.
+  if (isDiagnosticQuestion(message) || isImprovementQuestion(message)) return null;
 
   const normalizedMessage = normalizeForMatch(message);
   const hasTriggerWord = TECHNIQUE_TRIGGER_WORDS.some((w) => normalizedMessage.includes(normalizeForMatch(w)));

@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { AiConversation, AiMessage } from "@/types/database";
+import type { AiConversation, AiMessage, TrainingSkill } from "@/types/database";
 
 export async function fetchConversations(): Promise<AiConversation[]> {
   const { data: auth } = await supabase.auth.getUser();
@@ -50,7 +50,11 @@ export async function sendMessageToCoach(conversationId: string, content: string
     .insert({ conversation_id: conversationId, role: "user", content });
   if (insertUserError) throw insertUserError;
 
-  const { data, error } = await supabase.functions.invoke<{ reply: string }>("ai-coach", {
+  const { data, error } = await supabase.functions.invoke<{
+    reply: string;
+    suggestedSkill?: TrainingSkill;
+    suggestedLabel?: string;
+  }>("ai-coach", {
     body: { conversationId, message: content },
   });
   if (error) throw error;
@@ -59,7 +63,15 @@ export async function sendMessageToCoach(conversationId: string, content: string
 
   const { data: assistantMessage, error: insertAssistantError } = await supabase
     .from("ai_messages")
-    .insert({ conversation_id: conversationId, role: "assistant", content: reply })
+    .insert({
+      conversation_id: conversationId,
+      role: "assistant",
+      content: reply,
+      // Conservée avec le message pour que la proposition de séance survive à
+      // la réouverture de la conversation.
+      suggested_skill: data?.suggestedSkill ?? null,
+      suggested_label: data?.suggestedLabel ?? null,
+    })
     .select("*")
     .single();
   if (insertAssistantError) throw insertAssistantError;

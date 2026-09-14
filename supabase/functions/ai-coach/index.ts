@@ -14,6 +14,8 @@ import {
   generateRuleBasedReply,
   findExerciseTechniqueReply,
   findGestureDiagnosisReply,
+  findImprovementReply,
+  type CoachReply,
   mentionsPain,
   SAFETY_NOTICE,
   type PlayerContext,
@@ -85,25 +87,37 @@ Deno.serve(async (req: Request) => {
     .limit(10);
 
   let reply: string;
+  let suggestedSkill: string | undefined;
+  let suggestedLabel: string | undefined;
 
-  // Deux familles de questions reçoivent une réponse adossée au contenu réel
+  // Trois familles de questions reçoivent une réponse adossée au contenu réel
   // de la bibliothèque, exacte et disponible même sans clé Anthropic :
-  //   - « pourquoi je rate mes manchettes ? » → les causes du raté, puis les
-  //     exercices qui les corrigent ;
+  //   - « comment améliorer ma détente ? »   → sur quoi travailler, puis les
+  //                                             exercices qui le font ;
+  //   - « pourquoi je rate mes manchettes ? » → les causes, puis les exercices
+  //                                             qui les corrigent ;
   //   - « comment bien faire des squats sautés ? » → la fiche d'exécution.
-  // L'ordre compte : une question de diagnostic mentionne forcément le geste,
-  // et ne doit pas être détournée vers une fiche technique.
+  //
+  // L'ordre compte. Les deux premières mentionnent forcément un geste : sans
+  // cette priorité, elles seraient détournées vers la fiche technique d'un
+  // exercice, ce qui répond à côté de la question posée.
   const { data: exerciseCatalog } = mentionsPain(message)
     ? { data: null }
     : await supabase.from("exercises").select("name, objective, instructions, common_mistakes, tips");
-  const diagnosisReply = exerciseCatalog
-    ? findGestureDiagnosisReply(message, exerciseCatalog, ctx.username)
-    : null;
-  const techniqueReply =
-    !diagnosisReply && exerciseCatalog ? findExerciseTechniqueReply(message, exerciseCatalog) : null;
 
-  if (diagnosisReply) {
-    reply = diagnosisReply;
+  let structured: CoachReply | null = null;
+  if (exerciseCatalog) {
+    structured =
+      findImprovementReply(message, exerciseCatalog, ctx.username) ??
+      findGestureDiagnosisReply(message, exerciseCatalog, ctx.username);
+  }
+  const techniqueReply =
+    !structured && exerciseCatalog ? findExerciseTechniqueReply(message, exerciseCatalog) : null;
+
+  if (structured) {
+    reply = structured.text;
+    suggestedSkill = structured.suggestedSkill;
+    suggestedLabel = structured.suggestedLabel;
   } else if (techniqueReply) {
     reply = techniqueReply;
   } else if (ANTHROPIC_API_KEY) {
@@ -117,7 +131,7 @@ Deno.serve(async (req: Request) => {
     reply = generateRuleBasedReply(message, ctx);
   }
 
-  return jsonResponse({ reply });
+  return jsonResponse({ reply, suggestedSkill, suggestedLabel });
 });
 
 async function callAnthropic(

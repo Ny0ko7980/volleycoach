@@ -265,6 +265,10 @@ export interface AiMessage {
   role: MessageRole;
   content: string;
   created_at: string;
+
+  // Proposition de séance ciblée jointe à une réponse du coach (migration 0012).
+  suggested_skill?: TrainingSkill | null;
+  suggested_label?: string | null;
 }
 
 export interface Club {
