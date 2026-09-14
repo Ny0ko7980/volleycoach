@@ -11,6 +11,8 @@
 import {
   findGestureDiagnosisReply,
   findImprovementReply,
+  isAffirmative,
+  buildSessionAcceptance,
   findExerciseTechniqueReply,
   isDiagnosticQuestion,
 } from "../supabase/functions/ai-coach/rulesEngine";
@@ -201,6 +203,23 @@ const diagSuggestion = findGestureDiagnosisReply("pourquoi je rate mes manchette
 check("un diagnostic propose aussi une séance ciblée",
   diagSuggestion?.suggestedSkill === "reception", String(diagSuggestion?.suggestedSkill));
 check("→ et le dit dans le texte", (diagSuggestion?.text ?? "").includes("séance ciblée"));
+
+// --- Acceptation de la séance proposée -----------------------------------
+for (const yes of ["oui", "Oui", "ok", "vas-y", "carrément", "c'est parti", "je veux bien", "go"]) {
+  check(`« ${yes} » est compris comme une acceptation`, isAffirmative(yes));
+}
+for (const no of [
+  "non",
+  "pas maintenant",
+  "oui mais pourquoi mes services sortent",
+  "comment améliorer ma détente",
+]) {
+  check(`« ${no} » n'est PAS une acceptation`, !isAffirmative(no));
+}
+check("la confirmation nomme la compétence",
+  buildSessionAcceptance("Adrien", "ta détente").includes("ta détente"));
+check("la confirmation renvoie vers le bouton",
+  buildSessionAcceptance("Adrien", "ta détente").includes("Créer une séance"));
 
 console.log("\n--- aperçu de la réponse ---\n");
 console.log(d1);

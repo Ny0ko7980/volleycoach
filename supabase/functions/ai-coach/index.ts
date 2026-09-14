@@ -15,6 +15,8 @@ import {
   findExerciseTechniqueReply,
   findGestureDiagnosisReply,
   findImprovementReply,
+  isAffirmative,
+  buildSessionAcceptance,
   type CoachReply,
   mentionsPain,
   SAFETY_NOTICE,
@@ -105,12 +107,38 @@ Deno.serve(async (req: Request) => {
     ? { data: null }
     : await supabase.from("exercises").select("name, objective, instructions, common_mistakes, tips");
 
+  // Le coach vient-il de proposer une séance ? Un simple « oui » doit alors
+  // valoir acceptation. Sans cette mémoire, le joueur répondait « oui » et
+  // recevait la réponse générique « sur quel aspect veux-tu travailler ? »,
+  // alors que la réponse venait d'être donnée juste au-dessus.
   let structured: CoachReply | null = null;
-  if (exerciseCatalog) {
+  if (isAffirmative(message) && body.conversationId) {
+    const { data: lastAssistant } = await supabase
+      .from("ai_messages")
+      .select("suggested_skill, suggested_label")
+      .eq("conversation_id", body.conversationId)
+      .eq("role", "assistant")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // On n'accepte que si la proposition est le message précédent : un « oui »
+    // isolé plus loin dans la conversation ne relance pas une vieille offre.
+    if (lastAssistant?.suggested_skill) {
+      structured = {
+        text: buildSessionAcceptance(ctx.username, lastAssistant.suggested_label ?? "ce point"),
+        suggestedSkill: lastAssistant.suggested_skill,
+        suggestedLabel: lastAssistant.suggested_label ?? undefined,
+      };
+    }
+  }
+
+  if (!structured && exerciseCatalog) {
     structured =
       findImprovementReply(message, exerciseCatalog, ctx.username) ??
       findGestureDiagnosisReply(message, exerciseCatalog, ctx.username);
   }
+
   const techniqueReply =
     !structured && exerciseCatalog ? findExerciseTechniqueReply(message, exerciseCatalog) : null;
 

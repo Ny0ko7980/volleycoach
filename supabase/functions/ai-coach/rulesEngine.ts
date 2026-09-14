@@ -931,6 +931,63 @@ function firstSentence(text: string | null): string | null {
  * diagnostic sur un geste qu'on n'a pas identifié.
  */
 /**
+ * Acquiescements courts.
+ *
+ * Quand le coach vient de proposer une séance, « oui » suffit à l'accepter.
+ * La liste ne contient que des réponses brèves et sans ambiguïté : elle n'est
+ * consultée que si le message précédent du coach portait une proposition, ce
+ * qui rend la reconnaissance sûre.
+ */
+const AFFIRMATIVE_REPLIES = [
+  "oui",
+  "ouais",
+  "oui !",
+  "yes",
+  "ok",
+  "okay",
+  "d'accord",
+  "daccord",
+  "vas-y",
+  "vas y",
+  "allez",
+  "carrement",
+  "avec plaisir",
+  "je veux bien",
+  "volontiers",
+  "go",
+  "c'est parti",
+  "cest parti",
+  "pourquoi pas",
+  "banco",
+  "ça marche",
+  "ca marche",
+  "s'il te plait",
+  "stp",
+];
+
+/**
+ * `true` si le message est un simple acquiescement.
+ *
+ * On exige un message court : « oui mais pourquoi mes services sortent ? »
+ * n'est pas une acceptation, c'est une nouvelle question.
+ */
+export function isAffirmative(message: string): boolean {
+  const normalized = normalizeForMatch(message).trim().replace(/[.!]+$/, "");
+  if (normalized.length > 20) return false;
+  return AFFIRMATIVE_REPLIES.some((reply) => normalized === normalizeForMatch(reply));
+}
+
+/** Confirmation envoyée quand le joueur accepte la séance proposée. */
+export function buildSessionAcceptance(username: string, label: string): string {
+  return (
+    `C'est parti, ${username} — une séance ciblée sur ${label}.\n\n` +
+    `Touche **« Créer une séance »** juste en dessous : je la construis avec les exercices de ta bibliothèque ` +
+    `adaptés à ton poste et à ton niveau, en écartant ceux que tu as trouvés trop durs récemment.\n\n` +
+    `Tu pourras encore ajuster la durée, l'intensité et le matériel disponible avant de démarrer.`
+  );
+}
+
+/**
  * Réponse du coach, éventuellement accompagnée d'une proposition de séance.
  *
  * `suggestedSkill` reprend le vocabulaire des catégories d'exercices de
