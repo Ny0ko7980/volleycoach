@@ -134,7 +134,10 @@ insert into public.exercises
   (${COLUMNS.join(", ")})
 values
 ${ALL_EXERCISES.map(sqlRow).join(",\n")}
-on conflict (slug) do update set
+-- Le prédicat \`where slug is not null\` répète celui de l'index partiel
+-- exercises_slug_key : sans lui, PostgreSQL ne peut pas rattacher le
+-- \`on conflict\` à cet index et rejette l'insertion.
+on conflict (slug) where slug is not null do update set
 ${updateAssignments};
 `;
 
