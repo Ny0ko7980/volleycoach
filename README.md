@@ -53,6 +53,7 @@ Depuis le dashboard Supabase → SQL Editor, exécute dans l'ordre :
 8. `supabase/migrations/0008_exercise_library_schema.sql` — colonnes de la bibliothèque enrichie (catégorie, niveaux, compétences, effectif, intensité, charges, consignes détaillées, progressions/régressions, tags), ajoutées en optionnel
 9. `supabase/migrations/0009_exercise_library_seed.sql` — bibliothèque de 300 exercices (fichier **généré**, voir ci-dessous)
 10. `supabase/migrations/0010_remove_exercise_media.sql` — retire les vidéos de la 0007 : plusieurs interdisaient l'intégration (erreur 152), ce qui affichait un cadre d'erreur dans la fiche
+11. `supabase/migrations/0011_training_personalization.sql` — entraînements personnalisés : préférences du joueur, ressenti par exercice et par séance, scores de compétence, signaux de compétence
 
 ### Vidéos d'exercice
 
@@ -151,11 +152,68 @@ npm run android  # émulateur Android
 ## 5. Commandes utiles
 
 ```bash
-npm run typecheck   # TypeScript strict, 0 erreur actuellement
-npm run lint         # ESLint
+npm run typecheck        # TypeScript strict
+npm run lint             # ESLint
+npm run exercises:check  # valide les 300 exercices de la bibliothèque
+npm run exercises:build  # régénère la migration 0009 depuis src/data/exercises
+npm run engine:check     # vérifie le comportement du moteur de recommandation
 ```
 
-## 6. Build (EAS)
+## 6. Entraînements personnalisés
+
+Deux parcours partent de l'écran Entraînement, sous « Que veux-tu faire aujourd'hui ? » :
+
+- **Séance recommandée** — VolleyCoach choisit quoi travailler à partir du profil du joueur, de son historique et de ses retours, puis annonce la séance et, quand une donnée le justifie, la raison de ce choix.
+- **Choisir mon entraînement** — le joueur impose la compétence, la durée, l'intensité et le matériel. La séance passe par le **même moteur** : son poste, son niveau et ses ressentis continuent d'écarter les exercices inadaptés.
+
+### L'axe de compétence
+
+Les scores et la recommandation raisonnent sur les **12 catégories d'exercices** (`exercises.category`) : réception, défense, passe, attaque, service, bloc, déplacements, détente, renforcement, mobilité, lecture du jeu, échauffement. C'est volontaire — une compétence désigne ainsi toujours un ensemble d'exercices réellement présents en bibliothèque, sans table de correspondance à maintenir.
+
+Le champ `exercises.skills` (246 valeurs libres : « plateforme », « pas chassés »…) reste descriptif et sert à l'anti-doublon, pas au score : il est trop fin pour ça.
+
+### Découpage
+
+| Fichier | Rôle | Accès réseau |
+|---|---|---|
+| `src/services/recommendationEngine.ts` | Décide quoi travailler, à quelle intensité, à quelle difficulté | Aucun (fonction pure) |
+| `src/services/trainingContextService.ts` | Assemble le contexte du joueur | Oui |
+| `src/services/workoutService.ts` | Choisit les exercices et crée la séance | Oui |
+| `src/services/skillScoring.ts` | Calcule les scores de compétence | Aucun (fonction pure) |
+| `src/services/skillScoreService.ts` | Lit et enregistre les scores | Oui |
+| `src/services/feedbackService.ts` | Ressentis et signaux de compétence | Oui |
+| `src/services/aiPlanner.ts` | Point de branchement d'une IA | Selon l'implémentation |
+
+Le moteur étant pur, `npm run engine:check` lui soumet des contextes construits à la main et vérifie ses garanties.
+
+### Adaptation
+
+Après chaque exercice, le joueur indique s'il l'a trouvé trop facile, adapté, difficile ou impossible. En fin de séance, trois échelles : fatigue, difficulté globale, satisfaction.
+
+Ces retours agissent ainsi :
+
+- **Difficulté** — bornée à ±1 point autour de la difficulté de base du niveau, jamais davantage : la progression se fait par paliers. Un « impossible » pèse quatre fois plus lourd qu'un « trop facile », pour ne jamais enfermer un joueur dans des exercices hors de portée.
+- **Priorité** — une compétence signalée faible remonte, avec une décroissance de moitié tous les 21 jours : un point faible corrigé cesse d'orienter les séances.
+- **Variété** — ce qui vient d'être travaillé passe derrière.
+- **Fatigue** — une fatigue moyenne ≥ 4 sur les 7 derniers jours ramène l'intensité au plus bas et supprime le bloc physique.
+
+### Scores de compétence
+
+Ce ne sont **pas** des mesures de niveau : ils résument les séances, les ressentis et les statistiques déjà enregistrées. En dessous de trois observations pour une compétence, l'app annonce qu'il manque des données au lieu d'afficher un chiffre — c'est `sample_size` qui le garantit, pas une convention d'affichage.
+
+### Préparation de l'analyse vidéo
+
+La table `skill_signals` est le point d'entrée unique de tout ce qui peut désigner une compétence comme faible ou forte, avec sa source (`feedback`, `session`, `statistic`, `video`, `coach`, `manual`). Le moteur ne lit qu'elle.
+
+Brancher l'analyse vidéo plus tard consistera donc à appeler `recordSkillSignal({ skill: "reception", source: "video", direction: "weakness", note: "plateforme instable" })` — sans toucher au moteur ni au générateur de séance.
+
+### Place de l'IA
+
+`aiPlanner.ts` définit un contrat volontairement étroit : l'IA reçoit des exercices **déjà sélectionnés** par la logique déterministe et ne peut que les réordonner ou en écarter. La garantie qu'elle n'invente pas d'exercice ne repose pas sur la consigne donnée au modèle mais sur le code : `refineSelection` filtre la réponse contre la liste de candidats et ignore tout identifiant inconnu.
+
+Aucun planificateur n'est branché aujourd'hui ; toute anomalie (absence d'IA, erreur réseau, réponse vide) ramène à la sélection déterministe. L'application fonctionne à l'identique sans IA.
+
+## 7. Build (EAS)
 
 ```bash
 npm install -g eas-cli
@@ -212,7 +270,7 @@ Notes de configuration liées à la soumission :
 
 ---
 
-## 7. Ce qui est réellement implémenté
+## 8. Ce qui est réellement implémenté
 
 | Domaine | État |
 |---|---|
@@ -220,6 +278,13 @@ Notes de configuration liées à la soumission :
 | Onboarding (profil, poste, niveau, objectifs multiples) | ✅ Fonctionnel, écrit en base |
 | Dashboard (XP, niveau, série, séance du jour, aperçu stats) | ✅ Fonctionnel |
 | Générateur de séances (règles poste/niveau/objectif/durée) | ✅ Fonctionnel |
+| Séance recommandée (profil, historique, ressentis, fatigue) | ✅ Fonctionnel |
+| Choisir mon entraînement (compétence, durée, intensité, matériel) | ✅ Fonctionnel |
+| Ressenti par exercice + fin de séance (fatigue, difficulté, satisfaction) | ✅ Fonctionnel |
+| Adaptation des séances suivantes (difficulté par paliers, priorité des points faibles) | ✅ Fonctionnel |
+| Scores par compétence | ✅ Fonctionnel — indicateurs internes, masqués sous 3 observations |
+| IA dans la recommandation | ⚠️ Architecture prête (`aiPlanner.ts`), aucun modèle branché : la logique déterministe fait tout le travail |
+| Analyse vidéo | ⚠️ Architecture prête (table `skill_signals`), détection non développée |
 | Mode Entraînement (timer récupération, séries, navigation, fin de séance) | ✅ Fonctionnel |
 | Bibliothèque d'exercices + filtres + détail | ✅ Fonctionnel (300 exercices) |
 | Journal d'entraînement | ✅ Fonctionnel |
@@ -239,14 +304,14 @@ Notes de configuration liées à la soumission :
 Tout bouton présent dans l'app déclenche une action réelle (navigation, appel
 Supabase, mutation). Aucun écran factice.
 
-## 8. Variables d'environnement
+## 9. Variables d'environnement
 
 Voir `.env.example`. Les variables `EXPO_PUBLIC_*` sont embarquées dans le
 bundle client (normal pour Supabase). `ANTHROPIC_API_KEY` ne doit **jamais**
 être préfixée `EXPO_PUBLIC_` : elle vit uniquement comme secret Supabase côté
 Edge Function.
 
-## 9. Parcours à tester manuellement
+## 10. Parcours à tester manuellement
 
 1. **Inscription** → email/mot de passe → redirection automatique vers l'onboarding.
 2. **Onboarding** complet (poste central, niveau intermédiaire, objectifs "détente" + "attaque") → vérifier l'arrivée sur le Dashboard avec le bon objectif affiché.
@@ -264,7 +329,7 @@ Edge Function.
 14. **Admin** : passer un compte en `role='admin'` via SQL (voir ci-dessus) → le bouton "⚙️ Administration" apparaît dans Profil → créer un nouvel exercice, vérifier qu'il apparaît dans la bibliothèque d'exercices, le modifier, puis le supprimer.
 15. **Admin — utilisateurs** : Administration → Gérer les utilisateurs → changer le rôle d'un autre compte de "Joueur" à "Coach" → vérifier la mise à jour immédiate du badge de rôle.
 
-## 10. Prochaines étapes suggérées
+## 11. Prochaines étapes suggérées
 
 - Intégration Stripe / achats intégrés pour l'offre Premium
 - Connexion Apple/Google (Supabase Auth le supporte nativement, juste à activer côté dashboard + ajouter les boutons)

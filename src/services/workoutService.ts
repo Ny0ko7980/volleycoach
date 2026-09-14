@@ -1,14 +1,21 @@
 import { supabase } from "@/lib/supabase";
 import type {
   Exercise,
+  Intensity,
   Objective,
   PlayerLevel,
+  PlayerProfile,
   Position,
   Workout,
   WorkoutExercise,
   WorkoutSession,
 } from "@/types/database";
 import { fetchExercises } from "@/services/exerciseService";
+import { objectiveForSkill, skillLabel } from "@/constants/skills";
+// Type seul : `recommendationEngine` importe ce module pour l'historique des
+// séances, un import de valeur créerait un cycle.
+import type { SessionRecommendation } from "@/services/recommendationEngine";
+import type { TrainingSkill } from "@/types/database";
 
 export interface GenerateWorkoutParams {
   objective: Objective;
@@ -21,6 +28,19 @@ export interface GenerateWorkoutParams {
   players?: number;
   /** Tags à éviter (zone à ménager, par exemple). */
   excludeTags?: string[];
+
+  // Champs issus du moteur de recommandation. Absents, la séance est composée
+  // à partir du seul `objective`, comme avant leur introduction.
+  /** Compétence du bloc technique principal. */
+  primarySkill?: TrainingSkill;
+  /** Compétence du bloc situation de jeu. */
+  secondarySkill?: TrainingSkill;
+  /** Compétence du bloc physique ; `null` supprime ce bloc. */
+  physicalSkill?: TrainingSkill | null;
+  intensity?: Intensity;
+  /** Difficulté visée (1-5) : les exercices plus durs sont écartés. */
+  difficultyTarget?: number;
+  title?: string;
 }
 
 type Phase = "echauffement" | "technique" | "situation" | "physique" | "retour_au_calme";
@@ -120,26 +140,69 @@ const LEVEL_VOLUME: Record<PlayerLevel, { sets: number; rest: number }> = {
 export async function generateWorkout(
   params: GenerateWorkoutParams
 ): Promise<Workout & { exercises: WorkoutExercise[] }> {
-  const { objective, durationMinutes, level, position, availableEquipment, players, excludeTags } = params;
+  const {
+    objective,
+    durationMinutes,
+    level,
+    position,
+    availableEquipment,
+    players,
+    excludeTags,
+    primarySkill,
+    secondarySkill,
+    physicalSkill,
+    intensity,
+    difficultyTarget,
+  } = params;
 
-  const context = { level, availableEquipment, players, excludeTags };
+  const context = {
+    level,
+    availableEquipment,
+    players,
+    excludeTags,
+    ...(intensity ? { intensity } : {}),
+    // `difficulty` filtre par `<=` : la difficulté visée devient un plafond.
+    ...(difficultyTarget ? { difficulty: Math.ceil(difficultyTarget) } : {}),
+  };
+
+  // Le moteur de recommandation raisonne en compétences (= catégories
+  // d'exercices) ; le parcours manuel historique raisonne en objectifs. Les
+  // deux mènent au même sélecteur, seul le filtre du bloc change.
+  const techniqueFilter = primarySkill ? { category: primarySkill } : { objective };
+  const situationFilter = secondarySkill ? { category: secondarySkill } : { objective: "competition" as const };
+  const physiqueCategories = physicalSkill
+    ? [physicalSkill]
+    : (["detente", "renforcement", "deplacements"] as const);
+
   const [warmupPool, techniquePool, situationPool, physiquePool, cooldownPool] = await Promise.all([
     fetchExercises({ category: "echauffement", availableEquipment, players }),
-    fetchExercises({ ...context, objective, position }),
-    fetchExercises({ ...context, objective: "competition" }),
-    fetchExercises({ ...context, categories: ["detente", "renforcement", "deplacements"] }),
+    fetchExercises({ ...context, ...techniqueFilter, position }),
+    fetchExercises({ ...context, ...situationFilter }),
+    physicalSkill === null
+      ? Promise.resolve([])
+      : fetchExercises({ ...context, categories: [...physiqueCategories] }),
     fetchExercises({ category: "mobilite" }),
   ]);
 
-  // Si le poste restreint trop le choix, on élargit avant d'abandonner.
-  const technique = techniquePool.length > 0 ? techniquePool : await fetchExercises({ objective });
+  // L'échauffement et le retour au calme structurent la séance : si le matériel
+  // déclaré ne laisse passer aucun exercice de ces catégories, on préfère en
+  // proposer un sans contrainte de matériel plutôt que livrer une séance qui
+  // démarre à froid.
+  const warmupFallback = warmupPool.length > 0 ? warmupPool : await fetchExercises({ category: "echauffement" });
+  const cooldownFallback = cooldownPool.length > 0 ? cooldownPool : await fetchExercises({ category: "mobilite" });
+
+  // Si le poste ou la difficulté visée restreignent trop le choix, on élargit
+  // progressivement plutôt que d'échouer sur une séance vide.
+  let technique = techniquePool;
+  if (technique.length === 0) technique = await fetchExercises({ ...techniqueFilter, level });
+  if (technique.length === 0) technique = await fetchExercises(techniqueFilter);
   if (technique.length === 0) {
     throw new Error("Aucun exercice disponible pour cet objectif. Réessaie avec un autre objectif.");
   }
 
   const plan = sessionPlan(durationMinutes);
-  const warmup = selectExercises(warmupPool, 1, durationMinutes, []);
-  const cooldown = selectExercises(cooldownPool, 1, durationMinutes, []);
+  const warmup = selectExercises(warmupFallback, 1, durationMinutes, []);
+  const cooldown = selectExercises(cooldownFallback, 1, durationMinutes, []);
   const warmupMinutes = warmup.reduce((total, exercise) => total + exercise.duration_minutes, 0);
   const cooldownMinutes = cooldown.reduce((total, exercise) => total + exercise.duration_minutes, 0);
 
@@ -176,8 +239,8 @@ export async function generateWorkout(
     .from("workouts")
     .insert({
       player_id: auth.user.id,
-      title: `Séance ${objective} — ${durationMinutes} min`,
-      objective,
+      title: params.title ?? defaultTitle(params),
+      objective: primarySkill ? objectiveForSkill(primarySkill) : objective,
       duration_minutes: durationMinutes,
       difficulty: Math.min(5, Math.max(1, Math.round(averageDifficulty))),
       warmup: describeBlock(warmup, "Échauffement articulaire + mobilité dynamique — 5 min"),
@@ -206,6 +269,37 @@ export async function generateWorkout(
   if (weError) throw weError;
 
   return { ...(workout as Workout), exercises: (workoutExercises ?? []) as WorkoutExercise[] };
+}
+
+/**
+ * Produit la séance décidée par le moteur de recommandation.
+ *
+ * Le moteur choisit quoi travailler, ce générateur choisit avec quels
+ * exercices : aucun exercice n'est inventé ici non plus, tout vient de la
+ * bibliothèque.
+ */
+export async function generateWorkoutFromRecommendation(
+  recommendation: SessionRecommendation,
+  profile: Pick<PlayerProfile, "level" | "position">
+): Promise<Workout & { exercises: WorkoutExercise[] }> {
+  return generateWorkout({
+    objective: objectiveForSkill(recommendation.primarySkill),
+    durationMinutes: recommendation.durationMinutes,
+    level: profile.level,
+    position: profile.position,
+    availableEquipment: recommendation.availableEquipment,
+    excludeTags: recommendation.excludeTags.length > 0 ? recommendation.excludeTags : undefined,
+    primarySkill: recommendation.primarySkill,
+    secondarySkill: recommendation.secondarySkill ?? undefined,
+    physicalSkill: recommendation.physicalSkill,
+    intensity: recommendation.intensity,
+    difficultyTarget: recommendation.difficultyTarget,
+  });
+}
+
+function defaultTitle(params: GenerateWorkoutParams): string {
+  const focus = params.primarySkill ? skillLabel(params.primarySkill) : params.objective;
+  return `Séance ${focus} — ${params.durationMinutes} min`;
 }
 
 function describeBlock(exercises: Exercise[], fallback: string): string {
@@ -279,6 +373,10 @@ export interface CompleteSessionInput {
   perceivedDifficulty: number;
   performanceRating: number;
   comment?: string;
+  /** Fatigue ressentie, 1 (frais) à 5 (épuisé). Alimente l'intensité des séances suivantes. */
+  fatigueLevel?: number;
+  /** Satisfaction globale, 1 à 5. */
+  satisfaction?: number;
 }
 
 export async function completeWorkoutSession(sessionId: string, input: CompleteSessionInput): Promise<WorkoutSession> {
@@ -291,6 +389,8 @@ export async function completeWorkoutSession(sessionId: string, input: CompleteS
       perceived_difficulty: input.perceivedDifficulty,
       performance_rating: input.performanceRating,
       comment: input.comment ?? null,
+      fatigue_level: input.fatigueLevel ?? null,
+      satisfaction: input.satisfaction ?? null,
     })
     .eq("id", sessionId)
     .select("*")

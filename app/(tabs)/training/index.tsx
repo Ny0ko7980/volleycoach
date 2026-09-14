@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { CircleCheck, Clock3, CalendarClock, Dumbbell, ChevronRight, Play } from "lucide-react-native";
+import { CircleCheck, Clock3, CalendarClock, Dumbbell, ChevronRight, Play, Sparkles, SlidersHorizontal } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { ChoiceTile } from "@/components/training/ChoiceTile";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
@@ -51,31 +52,44 @@ export default function TrainingHomeScreen() {
     <ScreenContainer onRefresh={load} refreshing={loading}>
       <Text style={[typography.titleXL, styles.title, { color: theme.text }]}>Entraînement</Text>
 
-      <Card>
-        <View style={styles.heroRow}>
-          <View style={[styles.heroIcon, { backgroundColor: theme.primaryMuted }]}>
-            <Play size={18} color={theme.primary} fill={theme.primary} />
+      {session ? (
+        <Card>
+          <View style={styles.heroRow}>
+            <View style={[styles.heroIcon, { backgroundColor: theme.primaryMuted }]}>
+              <Play size={18} color={theme.primary} fill={theme.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.bodyStrong, { color: theme.text }]}>Reprendre ma séance</Text>
+              <Text style={[typography.bodySecondary, { color: theme.textMuted, marginTop: 2 }]}>
+                Une séance est déjà en cours ou planifiée aujourd'hui.
+              </Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[typography.bodyStrong, { color: theme.text }]}>
-              {session ? "Reprendre ma séance" : "Générer une séance personnalisée"}
-            </Text>
-            <Text style={[typography.bodySecondary, { color: theme.textMuted, marginTop: 2 }]}>
-              {session
-                ? "Une séance est déjà en cours ou planifiée aujourd'hui."
-                : "Choisis un objectif et une durée, on s'occupe du reste."}
-            </Text>
+          <View style={{ marginTop: spacing.md }}>
+            <Button
+              label="Continuer la séance"
+              onPress={() => router.push(`/(tabs)/training/session/${session.id}`)}
+            />
           </View>
-        </View>
-        <View style={{ marginTop: spacing.md }}>
-          <Button
-            label={session ? "Continuer la séance" : "Créer une séance"}
-            onPress={() =>
-              session ? router.push(`/(tabs)/training/session/${session.id}`) : router.push("/(tabs)/training/generate")
-            }
-          />
-        </View>
-      </Card>
+        </Card>
+      ) : null}
+
+      <Text style={[typography.titleM, styles.question, { color: theme.text }]}>
+        Que veux-tu faire aujourd'hui ?
+      </Text>
+      <ChoiceTile
+        highlighted
+        icon={<Sparkles size={20} color={theme.primary} />}
+        title="Séance recommandée"
+        description="VolleyCoach compose la séance à partir de ton profil et de tes derniers retours."
+        onPress={() => router.push("/(tabs)/training/recommended")}
+      />
+      <ChoiceTile
+        icon={<SlidersHorizontal size={20} color={theme.textMuted} />}
+        title="Choisir mon entraînement"
+        description="Tu décides de la compétence, de la durée, de l'intensité et du matériel."
+        onPress={() => router.push("/(tabs)/training/generate")}
+      />
 
       <Pressable
         onPress={() => router.push("/(tabs)/training/exercises")}
@@ -133,6 +147,7 @@ function SessionStatusIcon({ status, color }: { status: string; color: string })
 
 const styles = StyleSheet.create({
   title: { marginTop: spacing.sm, marginBottom: spacing.lg },
+  question: { marginTop: spacing.sm, marginBottom: spacing.md },
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   heroIcon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   libraryCard: {

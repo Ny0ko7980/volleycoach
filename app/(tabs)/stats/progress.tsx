@@ -13,6 +13,8 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { fetchStatistics, computeCategoryScore } from "@/services/statisticsService";
 import { fetchGoals } from "@/services/goalsService";
 import { fetchSessionHistory } from "@/services/workoutService";
+import { fetchSkillScores, type SkillScoreResult } from "@/services/skillScoreService";
+import { SkillScoreList } from "@/components/training/SkillScoreList";
 import { STAT_CATEGORIES } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
 import type { Goal, StatCategory, WorkoutSession } from "@/types/database";
@@ -30,6 +32,7 @@ export default function ProgressScreen() {
     physique: 0,
   });
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [skillScores, setSkillScores] = useState<SkillScoreResult[]>([]);
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0);
   const [sessionsThisMonth, setSessionsThisMonth] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -39,11 +42,13 @@ export default function ProgressScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [allStats, activeGoals, sessions] = await Promise.all([
+      const [allStats, activeGoals, sessions, skills] = await Promise.all([
         fetchStatistics(),
         fetchGoals("active"),
         fetchSessionHistory(200),
+        fetchSkillScores(),
       ]);
+      setSkillScores(skills);
 
       const grouped: Record<StatCategory, typeof allStats> = { service: [], reception: [], attaque: [], bloc: [], defense: [], physique: [] };
       for (const s of allStats) grouped[s.category].push(s);
@@ -83,6 +88,14 @@ export default function ProgressScreen() {
           <EvolutionBlock label="Cette semaine" value={`${sessionsThisWeek} séances`} />
           <EvolutionBlock label="Ce mois-ci" value={`${sessionsThisMonth} séances`} />
         </View>
+      </Card>
+
+      <Card>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Scores par compétence</Text>
+        <Text style={{ color: theme.textMuted, fontSize: 12, marginBottom: spacing.md }}>
+          Progression interne calculée à partir de tes séances et de tes ressentis — pas une mesure de niveau.
+        </Text>
+        <SkillScoreList scores={skillScores} />
       </Card>
 
       <Card>

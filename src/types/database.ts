@@ -35,6 +35,56 @@ export type ExerciseCategory =
 
 export type Intensity = "low" | "medium" | "high";
 
+/**
+ * Axe de compétence du moteur de recommandation et des scores de progression.
+ *
+ * C'est volontairement le même vocabulaire que `ExerciseCategory` : un score
+ * faible en « réception » se traduit directement en exercices sélectionnables,
+ * sans table de correspondance à maintenir. Le champ `Exercise.skills`, lui,
+ * reste un vocabulaire libre et très fin (« plateforme », « pas chassés »…)
+ * utile pour décrire un exercice, mais trop granulaire pour porter un score.
+ */
+export type TrainingSkill = ExerciseCategory;
+
+/** Ressenti du joueur sur un exercice, du plus facile au plus difficile. */
+export type FeedbackRating = "trop_facile" | "adapte" | "difficile" | "impossible";
+
+/** Origine d'un signal de compétence. `video` est réservé à l'analyse vidéo à venir. */
+export type SkillSignalSource = "feedback" | "session" | "statistic" | "video" | "coach" | "manual";
+
+export type SkillSignalDirection = "weakness" | "strength";
+
+export interface ExerciseFeedback {
+  id: string;
+  player_id: string;
+  session_id: string;
+  exercise_id: string;
+  skill: TrainingSkill;
+  rating: FeedbackRating;
+  created_at: string;
+}
+
+export interface PlayerSkillScore {
+  player_id: string;
+  skill: TrainingSkill;
+  score: number;
+  /** Nombre d'observations derrière le score : sous un seuil, l'UI annonce un manque de données. */
+  sample_size: number;
+  updated_at: string;
+}
+
+export interface SkillSignal {
+  id: string;
+  player_id: string;
+  skill: TrainingSkill;
+  source: SkillSignalSource;
+  direction: SkillSignalDirection;
+  weight: number;
+  note: string | null;
+  session_id: string | null;
+  created_at: string;
+}
+
 export type StatCategory = "service" | "reception" | "attaque" | "bloc" | "defense" | "physique";
 export type GoalStatus = "active" | "achieved" | "abandoned";
 export type SessionStatus = "planned" | "in_progress" | "completed" | "skipped";
@@ -64,6 +114,12 @@ export interface PlayerProfile {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
+
+  // Préférences d'entraînement (migration 0011). Absentes tant que le joueur
+  // ne les a pas renseignées : le moteur ne filtre alors sur rien.
+  preferred_duration_minutes?: number | null;
+  available_equipment?: string[];
+  avoid_tags?: string[];
 }
 
 export interface Exercise {
@@ -145,6 +201,10 @@ export interface WorkoutSession {
   performance_rating: number | null;
   comment: string | null;
   created_at: string;
+
+  // Ressenti de fin de séance (migration 0011).
+  fatigue_level?: number | null;
+  satisfaction?: number | null;
   workout?: Workout & { workout_exercises?: WorkoutExercise[] };
 }
 

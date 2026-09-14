@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -10,6 +10,8 @@ import { ProgressRing } from "@/components/ui/ProgressRing";
 import { WorkoutProgress } from "@/components/workouts/WorkoutProgress";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
+import { FeedbackChips } from "@/components/training/FeedbackChips";
+import { ScaleSelector } from "@/components/training/ScaleSelector";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { supabase } from "@/lib/supabase";
 import { useProfileStore } from "@/store/profileStore";
@@ -18,14 +20,23 @@ import {
   fetchWorkoutWithExercises,
   updateSessionProgress,
 } from "@/services/workoutService";
+import { saveExerciseFeedback } from "@/services/feedbackService";
+import { refreshSkillScores } from "@/services/skillScoreService";
 import { applySessionRewards } from "@/services/gamificationService";
 import { notifyAchievementUnlocked } from "@/services/notificationsService";
 import { queueMutation } from "@/services/offlineQueue";
+import { skillOfExercise } from "@/constants/skills";
 import { radius, spacing, typography } from "@/constants/theme";
-import type { Workout, WorkoutExercise } from "@/types/database";
+import type { FeedbackRating, Workout, WorkoutExercise } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
 
-type Phase = "exercise" | "rest";
+/**
+ * Étapes du mode entraînement.
+ *
+ * `feedback` s'intercale après la dernière série d'un exercice : c'est le seul
+ * moment où le joueur a encore l'exercice en tête. `summary` clôt la séance.
+ */
+type Phase = "exercise" | "rest" | "feedback" | "summary";
 
 export default function TrainingModeScreen() {
   const { theme } = useAppTheme();
@@ -43,6 +54,10 @@ export default function TrainingModeScreen() {
   const [restTotal, setRestTotal] = useState(1);
   const [paused, setPaused] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [ratings, setRatings] = useState<Record<string, FeedbackRating>>({});
+  const [fatigue, setFatigue] = useState<number | null>(null);
+  const [satisfaction, setSatisfaction] = useState<number | null>(null);
+  const [difficulty, setDifficulty] = useState<number | null>(null);
   const startedAt = useRef(Date.now());
   const sessionId = id; // workout_session id passed via route param
 
@@ -50,7 +65,6 @@ export default function TrainingModeScreen() {
     if (!sessionId) return;
     // Le paramètre de route est l'id de la workout_session; on récupère le
     // workout associé via son propre id stocké côté session au démarrage.
-    // Pour rester simple ici, on relit la session pour connaître workout_id.
     (async () => {
       try {
         const { data: session, error: sessionError } = await supabase
@@ -92,6 +106,16 @@ export default function TrainingModeScreen() {
   const isLast = index === exercises.length - 1;
   const isLastSet = setNumber >= current.sets;
 
+  function goToNextExercise() {
+    if (!current) return;
+    setIndex((i) => i + 1);
+    setSetNumber(1);
+    setPhase("rest");
+    setRestRemaining(current.rest_seconds);
+    setRestTotal(current.rest_seconds || 1);
+    if (sessionId) updateSessionProgress(sessionId, index + 1).catch(() => undefined);
+  }
+
   async function handleNext() {
     if (!current) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
@@ -103,22 +127,42 @@ export default function TrainingModeScreen() {
         setRestTotal(current.rest_seconds || 1);
         return;
       }
-      if (isLast) {
-        await finishSession();
-        return;
-      }
-      setIndex((i) => i + 1);
-      setSetNumber(1);
-      setPhase("rest");
-      setRestRemaining(current.rest_seconds);
-      setRestTotal(current.rest_seconds || 1);
-      if (sessionId) await updateSessionProgress(sessionId, index + 1).catch(() => undefined);
-    } else {
+      // Toutes les séries sont faites : on demande le ressenti avant de passer
+      // à la suite, tant que l'exercice est encore frais.
+      setPhase("feedback");
+      return;
+    }
+    if (phase === "rest") {
       setPhase("exercise");
+      return;
+    }
+    if (phase === "feedback") {
+      if (isLast) setPhase("summary");
+      else goToNextExercise();
     }
   }
 
+  /**
+   * Enregistre le ressenti sans bloquer la séance : en cas d'échec réseau, le
+   * joueur continue son entraînement, seule l'adaptation future est perdue.
+   */
+  async function handleRate(rating: FeedbackRating) {
+    if (!current?.exercise || !sessionId) return;
+    Haptics.selectionAsync().catch(() => undefined);
+    setRatings((previous) => ({ ...previous, [current.exercise_id]: rating }));
+    await saveExerciseFeedback({
+      sessionId,
+      exerciseId: current.exercise_id,
+      skill: skillOfExercise(current.exercise),
+      rating,
+    }).catch(() => undefined);
+  }
+
   function handlePrevious() {
+    if (phase === "feedback") {
+      setPhase("exercise");
+      return;
+    }
     if (setNumber > 1) {
       setSetNumber((s) => s - 1);
       setPhase("exercise");
@@ -138,9 +182,16 @@ export default function TrainingModeScreen() {
     try {
       await completeWorkoutSession(sessionId, {
         durationMinutes,
-        perceivedDifficulty: 3,
-        performanceRating: 3,
+        // Les échelles non renseignées retombent sur la valeur neutre plutôt
+        // que de bloquer la fin de séance sur un formulaire obligatoire.
+        perceivedDifficulty: difficulty ?? 3,
+        performanceRating: satisfaction ?? 3,
+        ...(fatigue !== null ? { fatigueLevel: fatigue } : {}),
+        ...(satisfaction !== null ? { satisfaction } : {}),
       });
+      // Les scores de compétence alimentent la prochaine recommandation : on
+      // les recalcule maintenant, sans faire échouer la fin de séance.
+      await refreshSkillScores().catch(() => undefined);
       const { profile: updatedProfile, newAchievements } = await applySessionRewards(profile);
       setProfile(updatedProfile);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
@@ -162,6 +213,9 @@ export default function TrainingModeScreen() {
         status: "completed",
         completed_at: new Date().toISOString(),
         duration_minutes: durationMinutes,
+        perceived_difficulty: difficulty ?? 3,
+        fatigue_level: fatigue,
+        satisfaction,
       });
       Alert.alert("Séance enregistrée hors-ligne", "Elle sera synchronisée dès que tu retrouveras une connexion.", [
         { text: "OK", onPress: () => router.replace("/(tabs)") },
@@ -172,13 +226,54 @@ export default function TrainingModeScreen() {
   }
 
   function handleFinishEarly() {
+    if (phase === "summary") {
+      router.replace("/(tabs)");
+      return;
+    }
     Alert.alert("Terminer la séance ?", "Tu n'as pas complété tous les exercices.", [
       { text: "Annuler", style: "cancel" },
-      { text: "Terminer", style: "destructive", onPress: finishSession },
+      { text: "Terminer", style: "destructive", onPress: () => setPhase("summary") },
     ]);
   }
 
   const restPercent = restTotal > 0 ? ((restTotal - restRemaining) / restTotal) * 100 : 0;
+
+  if (phase === "summary") {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <ScrollView contentContainerStyle={styles.summary} showsVerticalScrollIndicator={false}>
+          <Text style={[typography.titleXL, { color: theme.text, marginBottom: spacing.xs }]}>Séance terminée</Text>
+          <Text style={[typography.bodySecondary, { color: theme.textMuted, marginBottom: spacing.xl }]}>
+            Trois questions rapides : elles servent à ajuster tes prochaines séances.
+          </Text>
+
+          <ScaleSelector
+            label="Fatigue ressentie"
+            lowLabel="Frais"
+            highLabel="Épuisé"
+            value={fatigue}
+            onChange={setFatigue}
+          />
+          <ScaleSelector
+            label="Difficulté globale"
+            lowLabel="Trop facile"
+            highLabel="Trop dure"
+            value={difficulty}
+            onChange={setDifficulty}
+          />
+          <ScaleSelector
+            label="Satisfaction"
+            lowLabel="Déçu"
+            highLabel="Très satisfait"
+            value={satisfaction}
+            onChange={setSatisfaction}
+          />
+
+          <Button label="Enregistrer ma séance" onPress={finishSession} loading={finishing} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -211,6 +306,19 @@ export default function TrainingModeScreen() {
               <Button label={paused ? "Reprendre" : "Pause"} variant="secondary" onPress={() => setPaused((p) => !p)} />
             </View>
           </View>
+        ) : phase === "feedback" ? (
+          <View style={styles.center}>
+            <Text style={[typography.eyebrow, { color: theme.textMuted, marginBottom: spacing.md }]}>TON RESSENTI</Text>
+            <Text style={[typography.titleM, styles.exerciseName, { color: theme.text }]}>
+              {current.exercise?.name}
+            </Text>
+            <Text style={[typography.bodySecondary, styles.feedbackHint, { color: theme.textMuted }]}>
+              Comment as-tu trouvé cet exercice ?
+            </Text>
+            <View style={styles.feedbackChips}>
+              <FeedbackChips value={ratings[current.exercise_id] ?? null} onChange={handleRate} />
+            </View>
+          </View>
         ) : (
           <View style={styles.center}>
             <View style={styles.exerciseNumberRow}>
@@ -238,11 +346,19 @@ export default function TrainingModeScreen() {
       <View style={styles.controls}>
         <View style={styles.controlRow}>
           <View style={styles.controlButton}>
-            <Button label="Précédent" variant="ghost" onPress={handlePrevious} disabled={index === 0 && setNumber === 1} />
+            <Button label="Précédent" variant="ghost" onPress={handlePrevious} disabled={index === 0 && setNumber === 1 && phase !== "feedback"} />
           </View>
           <View style={styles.controlButton}>
             <Button
-              label={isLast && isLastSet && phase === "exercise" ? "Terminer" : "Suivant"}
+              label={
+                phase === "feedback"
+                  ? ratings[current.exercise_id]
+                    ? isLast
+                      ? "Terminer"
+                      : "Exercice suivant"
+                    : "Passer"
+                  : "Suivant"
+              }
               onPress={handleNext}
               loading={finishing}
             />
@@ -264,6 +380,8 @@ const styles = StyleSheet.create({
   exerciseName: { textAlign: "center", marginBottom: spacing.xs },
   setInfo: { textAlign: "center", marginBottom: spacing.lg },
   instructions: { textAlign: "center", lineHeight: 22, paddingHorizontal: spacing.sm },
+  feedbackHint: { textAlign: "center", marginTop: spacing.sm, marginBottom: spacing.xl },
+  feedbackChips: { width: "100%" },
   tipRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -277,4 +395,5 @@ const styles = StyleSheet.create({
   controls: { gap: spacing.sm, paddingBottom: spacing.sm },
   controlRow: { flexDirection: "row", gap: spacing.md },
   controlButton: { flex: 1 },
+  summary: { paddingTop: spacing.xl, paddingBottom: spacing.xl },
 });
