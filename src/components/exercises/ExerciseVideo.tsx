@@ -1,4 +1,4 @@
-import { Linking, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { WebView } from "react-native-webview";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useAppTheme } from "@/hooks/useAppTheme";
@@ -68,12 +68,16 @@ function YoutubeEmbed({ videoId }: { videoId: string }) {
       mediaPlaybackRequiresUserAction={false}
       setSupportMultipleWindows={false}
       scrollEnabled={false}
-      // Sans cela, un lien du lecteur (logo, titre) chargerait le site YouTube
-      // complet dans ce cadre de quelques centimètres.
       onShouldStartLoadWithRequest={(request) => {
-        if (request.url.includes("/embed/") || request.url === "about:blank") return true;
-        Linking.openURL(request.url).catch(() => undefined);
-        return false;
+        // Le lecteur charge ses propres ressources dans une sous-frame. Les
+        // intercepter ferait quitter la carte dès la première requête interne,
+        // avant même que la vidéo s'affiche.
+        if (request.isTopFrame === false) return true;
+        if (request.navigationType && request.navigationType !== "click") return true;
+
+        // Reste un toucher sur un lien du lecteur (logo, titre) : on le refuse
+        // pour que la lecture reste dans la carte, sans quitter l'application.
+        return request.url.includes("/embed/");
       }}
     />
   );
