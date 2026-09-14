@@ -12,6 +12,9 @@ const ICONS: Record<string, typeof Home> = {
   profile: User,
 };
 
+/** Onglets contenant une pile de navigation, à ramener à leur écran principal. */
+const STACK_TABS = ["training", "stats", "coach", "profile"];
+
 const LABELS: Record<string, string> = {
   index: "Accueil",
   training: "Entraînement",
@@ -50,10 +53,18 @@ export default function TabsLayout() {
       })}
     >
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="training" />
-      <Tabs.Screen name="stats" />
-      <Tabs.Screen name="coach" />
-      <Tabs.Screen name="profile" />
+      {STACK_TABS.map((name) => (
+        <Tabs.Screen
+          key={name}
+          name={name}
+          listeners={({ navigation }) => ({
+            // Sans cela, l'onglet rouvre le dernier écran visité de sa pile :
+            // revenir sur Profil après avoir consulté "Mes objectifs" y
+            // ramenait au lieu d'afficher la fiche.
+            tabPress: () => navigation.navigate(name, { screen: "index" }),
+          })}
+        />
+      ))}
     </Tabs>
   );
 }
