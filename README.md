@@ -160,12 +160,55 @@ npm run lint         # ESLint
 ```bash
 npm install -g eas-cli
 eas login
+eas init                 # crée le projet EAS et écrit extra.eas.projectId
 eas build --profile development --platform ios
 eas build --profile development --platform android
 ```
 
-Remplace `extra.eas.projectId` dans `app.json` par l'ID de ton projet EAS
-(`eas init`).
+### Diffuser une bêta sur TestFlight (iOS)
+
+Prérequis : un compte **Apple Developer Program** payant (99 €/an). Le compte
+gratuit ne permet pas TestFlight.
+
+Les variables `EXPO_PUBLIC_*` vivent dans `.env`, qui n'est pas versionné : le
+build EAS tourne sur un serveur distant et ne les verrait pas. Il faut donc les
+déclarer une fois sur EAS.
+
+```bash
+eas env:create --name EXPO_PUBLIC_SUPABASE_URL      --value "https://<ref>.supabase.co" --visibility plaintext --environment production
+eas env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<clé anon>"                --visibility plaintext --environment production
+
+eas build --profile production --platform ios
+eas submit --profile production --platform ios --latest
+```
+
+`eas build` demande les identifiants Apple et génère lui-même le certificat de
+distribution et le profil de provisioning. `eas submit` envoie le `.ipa` sur
+App Store Connect et crée la fiche de l'app si elle n'existe pas encore.
+
+Ensuite, sur [App Store Connect](https://appstoreconnect.apple.com) → onglet
+**TestFlight** :
+
+- **Testeurs internes** (jusqu'à 100, membres de l'équipe Apple) : disponible
+  dès la fin du traitement du build, sans revue.
+- **Testeurs externes** (jusqu'à 10 000, par lien public) : nécessite une
+  **Beta App Review** d'Apple (généralement < 24 h) et un compte de test
+  fonctionnel à fournir, la connexion étant obligatoire dans l'app.
+
+Notes de configuration liées à la soumission :
+
+- `ITSAppUsesNonExemptEncryption: false` est déclaré dans `app.json` : l'app
+  n'utilise que HTTPS. Sans cette clé, App Store Connect repose la question de
+  conformité export à chaque build et bloque la diffusion.
+- Aucun `UIBackgroundModes` n'est déclaré : les notifications sont **locales**
+  (`expo-notifications`), pas des push distantes. Déclarer un mode
+  d'arrière-plan non utilisé expose à un refus en revue.
+- `appVersionSource: "remote"` + `autoIncrement` : EAS gère le `buildNumber`.
+  Pour une nouvelle version publique, incrémente `expo.version` dans
+  `app.json` (ex. `1.0.1`).
+- Le projet n'embarque pas `expo-updates` : chaque correction demande un
+  nouveau build. Pour livrer des correctifs JS sans repasser par TestFlight,
+  il faudrait ajouter EAS Update.
 
 ---
 

@@ -1,6 +1,10 @@
 module.exports = {
   extends: "expo",
-  ignorePatterns: ["/dist/*"],
+  // Les Edge Functions tournent sous Deno, pas dans le bundle React Native :
+  // elles utilisent des spécificateurs Deno (`npm:...`, imports en `.ts`) que
+  // le résolveur de la config Expo ne sait pas résoudre. Les linter ici ne
+  // donnerait que des faux positifs.
+  ignorePatterns: ["/dist/*", "/supabase/functions/*"],
   rules: {
     // eslint-plugin-react-hooks@7 (tiré par eslint-config-expo pour le SDK 57)
     // ajoute cette règle à son preset "recommended". Elle signale notre motif

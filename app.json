@@ -12,12 +12,14 @@
       "resizeMode": "contain",
       "backgroundColor": "#0B1220"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.coachvolley.app",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -26,7 +28,10 @@
         "backgroundColor": "#0B1220"
       },
       "package": "com.coachvolley.app",
-      "permissions": ["NOTIFICATIONS", "SCHEDULE_EXACT_ALARM"]
+      "permissions": [
+        "NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -46,9 +51,6 @@
     "extra": {
       "router": {
         "origin": false
-      },
-      "eas": {
-        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
       }
     }
   }
