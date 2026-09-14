@@ -13,6 +13,7 @@ import { fetchGoals, createGoal, deleteGoal } from "@/services/goalsService";
 import { OBJECTIVES } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { Goal, Objective } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function GoalsScreen() {
   const { theme } = useAppTheme();
@@ -40,7 +41,7 @@ export default function GoalsScreen() {
             await deleteGoal(goal.id);
             setGoals((prev) => prev.filter((g) => g.id !== goal.id));
           } catch (e) {
-            Alert.alert("Erreur", e instanceof Error ? e.message : "Impossible de supprimer cet objectif.");
+            Alert.alert("Erreur", errorMessage(e, "Impossible de supprimer cet objectif."));
           }
         },
       },
@@ -117,7 +118,7 @@ function NewGoalModal({ visible, onClose, onCreated }: { visible: boolean; onClo
       setTarget("");
       setUnit("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible de créer l'objectif.");
+      setError(errorMessage(e, "Impossible de créer l'objectif."));
     } finally {
       setLoading(false);
     }

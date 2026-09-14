@@ -13,6 +13,7 @@ import { useProfileStore } from "@/store/profileStore";
 import { fetchTodaySession, fetchSessionHistory } from "@/services/workoutService";
 import { spacing, typography, radius } from "@/constants/theme";
 import type { WorkoutSession } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function TrainingHomeScreen() {
   const { theme } = useAppTheme();
@@ -31,7 +32,7 @@ export default function TrainingHomeScreen() {
       setSession(today);
       setRecent(history);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur de chargement.");
+      setError(errorMessage(e, "Erreur de chargement."));
     } finally {
       setLoading(false);
     }

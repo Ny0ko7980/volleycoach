@@ -22,6 +22,7 @@ import { positionLabel, levelLabel, objectiveLabel, STAT_METRICS } from "@/const
 import { spacing, typography } from "@/constants/theme";
 import { formatDurationMinutes } from "@/utils/duration";
 import type { Achievement, PlayerAchievement } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function ProfileScreen() {
   const { theme } = useAppTheme();
@@ -67,7 +68,7 @@ export default function ProfileScreen() {
       }
       setRecord(best ? { label: best.label, value: best.display } : null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur de chargement du profil.");
+      setError(errorMessage(e, "Erreur de chargement du profil."));
     } finally {
       setLoading(false);
     }

@@ -12,6 +12,7 @@ import { createExerciseAsAdmin, updateExerciseAsAdmin } from "@/services/adminSe
 import { OBJECTIVES, LEVELS, POSITIONS } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { Objective, PlayerLevel, Position } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 const DIFFICULTIES = [1, 2, 3, 4, 5];
 
@@ -91,7 +92,7 @@ export default function ExerciseFormScreen() {
       else await createExerciseAsAdmin(input);
       router.back();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible d'enregistrer l'exercice.");
+      setError(errorMessage(e, "Impossible d'enregistrer l'exercice."));
     } finally {
       setSaving(false);
     }

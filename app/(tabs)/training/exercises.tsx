@@ -16,6 +16,7 @@ import { cacheExercisesForOffline, getCachedExercises } from "@/services/offline
 import { OBJECTIVES, LEVELS, POSITIONS } from "@/constants/positions";
 import { spacing, typography, radius } from "@/constants/theme";
 import type { Exercise, Objective, PlayerLevel, Position } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function ExerciseLibraryScreen() {
   const { theme } = useAppTheme();
@@ -43,7 +44,7 @@ export default function ExerciseLibraryScreen() {
       setExercises(data);
       if (Object.keys(f).length === 0) await cacheExercisesForOffline(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible de charger les exercices.");
+      setError(errorMessage(e, "Impossible de charger les exercices."));
     } finally {
       setLoading(false);
     }

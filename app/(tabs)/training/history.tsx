@@ -11,6 +11,7 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { fetchSessionHistory } from "@/services/workoutService";
 import { spacing, typography } from "@/constants/theme";
 import type { WorkoutSession } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 const STATUS_LABEL: Record<string, { label: string; tone: "success" | "primary" | "neutral" }> = {
   completed: { label: "Terminée", tone: "success" },
@@ -30,7 +31,7 @@ export default function TrainingHistoryScreen() {
     setError(null);
     fetchSessionHistory(100)
       .then(setSessions)
-      .catch((e) => setError(e instanceof Error ? e.message : "Erreur de chargement."))
+      .catch((e) => setError(errorMessage(e, "Erreur de chargement.")))
       .finally(() => setLoading(false));
   }
 

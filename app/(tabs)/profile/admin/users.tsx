@@ -14,6 +14,7 @@ import { fetchAllPlayersAsAdmin, setPlayerRoleAsAdmin } from "@/services/adminSe
 import { positionLabel, levelLabel } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { PlayerProfile, PlayerRole } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 const ROLES: { value: PlayerRole; label: string }[] = [
   { value: "player", label: "Joueur" },
@@ -36,7 +37,7 @@ export default function AdminUsersScreen() {
     try {
       setPlayers(await fetchAllPlayersAsAdmin());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur de chargement.");
+      setError(errorMessage(e, "Erreur de chargement."));
     } finally {
       setLoading(false);
     }
@@ -67,7 +68,7 @@ export default function AdminUsersScreen() {
               const updated = await setPlayerRoleAsAdmin(player.id, role);
               setPlayers((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
             } catch (e) {
-              Alert.alert("Erreur", e instanceof Error ? e.message : "Impossible de changer le rôle.");
+              Alert.alert("Erreur", errorMessage(e, "Impossible de changer le rôle."));
             } finally {
               setUpdatingId(null);
             }

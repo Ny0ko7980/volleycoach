@@ -23,6 +23,7 @@ import { notifyAchievementUnlocked } from "@/services/notificationsService";
 import { queueMutation } from "@/services/offlineQueue";
 import { radius, spacing, typography } from "@/constants/theme";
 import type { Workout, WorkoutExercise } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 type Phase = "exercise" | "rest";
 
@@ -63,7 +64,7 @@ export default function TrainingModeScreen() {
         setWorkout(w);
         setIndex(session.current_exercise_index ?? 0);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Impossible de charger la séance.");
+        setError(errorMessage(e, "Impossible de charger la séance."));
       } finally {
         setLoading(false);
       }

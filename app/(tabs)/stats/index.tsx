@@ -24,6 +24,7 @@ import { STAT_CATEGORIES, STAT_METRICS } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
 import { formatDurationMinutes } from "@/utils/duration";
 import type { Goal, StatCategory, Statistic, WorkoutSession } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 type Period = "7j" | "30j" | "3m" | "tout";
 const PERIODS: { value: Period; label: string; days: number | null }[] = [
@@ -57,7 +58,7 @@ export default function StatisticsScreen() {
       setSessions(history);
       setGoals(activeGoals);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur de chargement des statistiques.");
+      setError(errorMessage(e, "Erreur de chargement des statistiques."));
     } finally {
       setLoading(false);
     }

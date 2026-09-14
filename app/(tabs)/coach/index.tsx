@@ -12,6 +12,7 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { fetchConversations, createConversation } from "@/services/aiCoachService";
 import { spacing, typography } from "@/constants/theme";
 import type { AiConversation } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 const SUGGESTED_QUESTIONS = [
   "Comment améliorer ma réception ?",
@@ -34,7 +35,7 @@ export default function CoachHomeScreen() {
     try {
       setConversations(await fetchConversations());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur de chargement.");
+      setError(errorMessage(e, "Erreur de chargement."));
     } finally {
       setLoading(false);
     }

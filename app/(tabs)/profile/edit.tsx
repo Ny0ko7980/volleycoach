@@ -11,6 +11,7 @@ import { updateMyProfile } from "@/services/profileService";
 import { POSITIONS, LEVELS, OBJECTIVES } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { Objective, PlayerLevel, Position } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function EditProfileScreen() {
   const { theme } = useAppTheme();
@@ -50,7 +51,7 @@ export default function EditProfileScreen() {
       setProfile(updated);
       router.back();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible d'enregistrer les modifications.");
+      setError(errorMessage(e, "Impossible d'enregistrer les modifications."));
     } finally {
       setLoading(false);
     }

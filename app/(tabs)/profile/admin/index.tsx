@@ -13,6 +13,7 @@ import { fetchGlobalStats, deleteExerciseAsAdmin, type GlobalStats } from "@/ser
 import { objectiveLabel } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { Exercise } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function AdminHomeScreen() {
   const { theme } = useAppTheme();
@@ -31,7 +32,7 @@ export default function AdminHomeScreen() {
       setStats(globalStats);
       setExercises(exerciseList);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur de chargement.");
+      setError(errorMessage(e, "Erreur de chargement."));
     } finally {
       setLoading(false);
     }
@@ -56,9 +57,7 @@ export default function AdminHomeScreen() {
           } catch (e) {
             Alert.alert(
               "Impossible de supprimer",
-              e instanceof Error
-                ? e.message
-                : "Cet exercice est probablement utilisé dans une séance existante."
+              errorMessage(e, "Cet exercice est probablement utilisé dans une séance existante.")
             );
           }
         },

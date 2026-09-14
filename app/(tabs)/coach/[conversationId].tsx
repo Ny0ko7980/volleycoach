@@ -9,6 +9,7 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { fetchMessages, sendMessageToCoach } from "@/services/aiCoachService";
 import { spacing } from "@/constants/theme";
 import type { AiMessage } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function ChatScreen() {
   const { theme } = useAppTheme();
@@ -52,7 +53,7 @@ export default function ChatScreen() {
       const assistantMessage = await sendMessageToCoach(conversationId, text);
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Le Coach IA n'a pas pu répondre. Réessaie.");
+      setError(errorMessage(e, "Le Coach IA n'a pas pu répondre. Réessaie."));
     } finally {
       setSending(false);
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));

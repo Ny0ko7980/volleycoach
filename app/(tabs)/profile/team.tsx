@@ -23,6 +23,7 @@ import {
 import { positionLabel, levelLabel } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { Team, TeamMember } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 type ViewState =
   | { kind: "loading" }
@@ -56,7 +57,7 @@ export default function TeamScreen() {
 
       setState({ kind: "none" });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur de chargement.");
+      setError(errorMessage(e, "Erreur de chargement."));
       setState({ kind: "none" });
     }
   }, []);
@@ -207,7 +208,7 @@ function NoTeamView({ onChanged }: { onChanged: () => void }) {
       await createTeamAsCoach(teamName.trim());
       onChanged();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible de créer l'équipe.");
+      setError(errorMessage(e, "Impossible de créer l'équipe."));
     } finally {
       setCreating(false);
     }
@@ -224,7 +225,7 @@ function NoTeamView({ onChanged }: { onChanged: () => void }) {
       await joinTeamByCode(code.trim());
       onChanged();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Code invalide.");
+      setError(errorMessage(e, "Code invalide."));
     } finally {
       setJoining(false);
     }

@@ -10,6 +10,7 @@ import { addStatistic } from "@/services/statisticsService";
 import { STAT_CATEGORIES, STAT_METRICS } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
 import type { StatCategory } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function AddStatisticScreen() {
   const { theme } = useAppTheme();
@@ -39,7 +40,7 @@ export default function AddStatisticScreen() {
       await addStatistic({ category, metric, value: numericValue, unit: metricDef?.unit, notes: notes || undefined });
       router.back();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible d'enregistrer la statistique.");
+      setError(errorMessage(e, "Impossible d'enregistrer la statistique."));
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,7 @@ import { useProfileStore } from "@/store/profileStore";
 import { completeOnboarding } from "@/services/profileService";
 import { positionLabel, levelLabel, objectiveLabel } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
+import { errorMessage } from "@/utils/errors";
 
 export default function SummaryScreen() {
   const { theme } = useAppTheme();
@@ -40,7 +41,7 @@ export default function SummaryScreen() {
       data.reset();
       router.replace("/(tabs)");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur lors de l'enregistrement du profil.");
+      setError(errorMessage(e, "Erreur lors de l'enregistrement du profil."));
     } finally {
       setLoading(false);
     }

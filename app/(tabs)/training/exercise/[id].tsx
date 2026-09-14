@@ -14,6 +14,7 @@ import { fetchExerciseById } from "@/services/exerciseService";
 import { levelLabel, objectiveLabel, positionLabel } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
 import type { Exercise } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function ExerciseDetailScreen() {
   const { theme } = useAppTheme();
@@ -27,7 +28,7 @@ export default function ExerciseDetailScreen() {
     setLoading(true);
     fetchExerciseById(id)
       .then(setExercise)
-      .catch((e) => setError(e instanceof Error ? e.message : "Erreur de chargement."))
+      .catch((e) => setError(errorMessage(e, "Erreur de chargement.")))
       .finally(() => setLoading(false));
   }, [id]);
 

@@ -10,6 +10,7 @@ import { generateWorkout, startWorkoutSession } from "@/services/workoutService"
 import { OBJECTIVES } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
 import type { Objective } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 const DURATIONS = [15, 20, 30, 45, 60];
 
@@ -39,7 +40,7 @@ export default function GenerateWorkoutScreen() {
       const session = await startWorkoutSession(workout.id);
       router.replace(`/(tabs)/training/session/${session.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible de générer la séance.");
+      setError(errorMessage(e, "Impossible de générer la séance."));
     } finally {
       setLoading(false);
     }

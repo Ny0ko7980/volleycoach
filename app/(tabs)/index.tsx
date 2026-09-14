@@ -21,6 +21,7 @@ import { positionLabel, levelLabel } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
 import { formatDurationMinutes, greetingForHour, weeklySessionTarget } from "@/utils/duration";
 import type { Goal, StatCategory, Workout, WorkoutExercise, WorkoutSession } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function DashboardScreen() {
   const { theme } = useAppTheme();
@@ -70,7 +71,7 @@ export default function DashboardScreen() {
       setMinutesThisWeek(completedThisWeek.reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0));
       setMainGoal(activeGoals[0] ?? null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible de charger le tableau de bord.");
+      setError(errorMessage(e, "Impossible de charger le tableau de bord."));
     } finally {
       setLoading(false);
     }

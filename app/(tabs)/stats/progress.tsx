@@ -16,6 +16,7 @@ import { fetchSessionHistory } from "@/services/workoutService";
 import { STAT_CATEGORIES } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
 import type { Goal, StatCategory, WorkoutSession } from "@/types/database";
+import { errorMessage } from "@/utils/errors";
 
 export default function ProgressScreen() {
   const { theme } = useAppTheme();
@@ -58,7 +59,7 @@ export default function ProgressScreen() {
       setSessionsThisWeek(completed.filter((s) => new Date(s.created_at) >= weekAgo).length);
       setSessionsThisMonth(completed.filter((s) => new Date(s.created_at) >= monthAgo).length);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur de chargement.");
+      setError(errorMessage(e, "Erreur de chargement."));
     } finally {
       setLoading(false);
     }
