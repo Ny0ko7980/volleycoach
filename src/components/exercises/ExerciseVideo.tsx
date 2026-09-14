@@ -1,43 +1,80 @@
-import { StyleSheet, View } from "react-native";
+import { Linking, StyleSheet, View } from "react-native";
 import { WebView } from "react-native-webview";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { radius } from "@/constants/theme";
 
-function toYoutubeEmbedUrl(url: string): string | null {
+function youtubeVideoId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtube\.com\/shorts\/|youtu\.be\/)([\w-]{11})/,
     /youtube\.com\/embed\/([\w-]{11})/,
   ];
   for (const pattern of patterns) {
     const match = url.match(pattern);
-    if (match) return `https://www.youtube.com/embed/${match[1]}?playsinline=1`;
+    if (match?.[1]) return match[1];
   }
   return null;
 }
 
-// Lecteur vidéo d'exemple pour un exercice: rendu en WebView pour un lien
-// YouTube (le format le plus courant pour des tutos), ou en lecteur vidéo
-// natif pour un fichier direct (mp4, etc.).
+// Lecteur vidéo d'exemple pour un exercice: iframe YouTube pour un lien
+// YouTube (le format le plus courant pour des tutos), ou lecteur vidéo natif
+// pour un fichier direct (mp4, etc.).
 export function ExerciseVideo({ url }: { url: string }) {
   const { theme } = useAppTheme();
-  const embedUrl = toYoutubeEmbedUrl(url);
+  const videoId = youtubeVideoId(url);
 
   return (
     <View style={[styles.wrapper, { backgroundColor: theme.surfaceAlt }]}>
-      {embedUrl ? <YoutubeEmbed url={embedUrl} /> : <NativeVideo url={url} />}
+      {videoId ? <YoutubeEmbed videoId={videoId} /> : <NativeVideo url={url} />}
     </View>
   );
 }
 
-function YoutubeEmbed({ url }: { url: string }) {
+/**
+ * YouTube rejette une intégration dont il ne reconnaît pas l'origine (erreur
+ * 153). Charger l'URL d'embed directement dans la WebView ne fournit aucune
+ * origine : il faut servir une vraie page HTML et déclarer `baseUrl`, qui
+ * devient l'origine du document.
+ */
+function YoutubeEmbed({ videoId }: { videoId: string }) {
+  const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+      iframe { border: 0; display: block; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <iframe
+      src="https://www.youtube.com/embed/${videoId}?playsinline=1&rel=0&modestbranding=1&origin=https%3A%2F%2Fwww.youtube.com"
+      allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  </body>
+</html>`;
+
   return (
     <WebView
-      source={{ uri: url }}
+      source={{ html, baseUrl: "https://www.youtube.com" }}
+      originWhitelist={["*"]}
       style={styles.media}
-      allowsInlineMediaPlayback
-      mediaPlaybackRequiresUserAction={false}
       javaScriptEnabled
+      domStorageEnabled
+      allowsInlineMediaPlayback
+      allowsFullscreenVideo
+      mediaPlaybackRequiresUserAction={false}
+      setSupportMultipleWindows={false}
+      scrollEnabled={false}
+      // Sans cela, un lien du lecteur (logo, titre) chargerait le site YouTube
+      // complet dans ce cadre de quelques centimètres.
+      onShouldStartLoadWithRequest={(request) => {
+        if (request.url.includes("/embed/") || request.url === "about:blank") return true;
+        Linking.openURL(request.url).catch(() => undefined);
+        return false;
+      }}
     />
   );
 }
@@ -51,5 +88,5 @@ function NativeVideo({ url }: { url: string }) {
 
 const styles = StyleSheet.create({
   wrapper: { width: "100%", aspectRatio: 16 / 9, borderRadius: radius.lg, overflow: "hidden" },
-  media: { width: "100%", height: "100%" },
+  media: { width: "100%", height: "100%", backgroundColor: "#000" },
 });
