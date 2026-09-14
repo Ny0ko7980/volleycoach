@@ -49,9 +49,25 @@ Depuis le dashboard Supabase → SQL Editor, exécute dans l'ordre :
 4. `supabase/migrations/0004_team_management.sql` — code d'invitation équipe + fonctions `create_team_as_coach`/`join_team_by_code`/`leave_team`
 5. `supabase/migrations/0005_security_hardening.sql` — verrouille `role`/`is_premium` (non modifiables par un joueur, même via API directe) + déplace le calcul XP/série/badges côté serveur (`apply_session_rewards()`)
 6. `supabase/migrations/0006_more_exercises.sql` — 16 exercices supplémentaires (34 au total)
-7. `supabase/migrations/0007_exercise_media.sql` — vidéos d'exemple (liens YouTube) pour les 18 exercices d'origine — vérifie la lecture après déploiement, voir le commentaire en tête du fichier
+7. `supabase/migrations/0007_exercise_media.sql` — vidéos d'exemple (liens YouTube) — **annulée par la migration 0010**, voir ci-dessous
 8. `supabase/migrations/0008_exercise_library_schema.sql` — colonnes de la bibliothèque enrichie (catégorie, niveaux, compétences, effectif, intensité, charges, consignes détaillées, progressions/régressions, tags), ajoutées en optionnel
 9. `supabase/migrations/0009_exercise_library_seed.sql` — bibliothèque de 300 exercices (fichier **généré**, voir ci-dessous)
+10. `supabase/migrations/0010_remove_exercise_media.sql` — retire les vidéos de la 0007 : plusieurs interdisaient l'intégration (erreur 152), ce qui affichait un cadre d'erreur dans la fiche
+
+### Vidéos d'exercice
+
+Aucun exercice n'a de vidéo par défaut. Le lecteur et le champ « Lien vidéo »
+de l'admin restent en place : renseigne un lien dans Profil → Administration →
+Exercices pour qu'une vidéo apparaisse dans la fiche.
+
+Deux formats acceptés :
+
+- **Fichier vidéo direct** (Supabase Storage, par exemple) — lecture native,
+  aucune restriction. C'est l'option fiable.
+- **Lien YouTube** — vérifie d'abord que la vidéo autorise l'intégration en
+  ouvrant `https://www.youtube.com/embed/<id>` dans un navigateur. Si tu vois
+  une erreur 150, 152 ou 153, son propriétaire l'interdit et elle ne pourra pas
+  être lue dans l'app.
 
 ### Bibliothèque d'exercices
 
