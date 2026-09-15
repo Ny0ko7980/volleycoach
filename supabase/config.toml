@@ -1,0 +1,26 @@
+project_id = "coach-volley"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "coachvolley://"
+additional_redirect_urls = ["coachvolley://auth/callback"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_confirmations = false
+
+[functions.ai-coach]
+verify_jwt = true
