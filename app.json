@@ -51,7 +51,11 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "ca39a2fa-a482-47d4-b798-fa40b6116079"
       }
-    }
+    },
+    "owner": "ny0ko"
   }
 }
