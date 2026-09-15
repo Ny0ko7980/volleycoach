@@ -10,12 +10,14 @@
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
+    "env:check": "node scripts/check-env.mjs",
     "exercises:check": "tsx scripts/validate-exercises.ts",
     "exercises:build": "tsx scripts/build-exercise-seed.ts",
     "engine:check": "tsx scripts/check-recommendation-engine.ts",
     "coach:check": "tsx scripts/check-ai-coach.ts",
     "rls:check": "tsx scripts/check-rls.ts",
-    "test": "jest"
+    "test": "jest",
+    "eas-build-pre-install": "node scripts/check-env.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

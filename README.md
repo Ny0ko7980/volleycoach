@@ -159,6 +159,9 @@ npm run exercises:check  # valide les 300 exercices de la bibliothèque
 npm run exercises:build  # régénère la migration 0009 depuis src/data/exercises
 npm run engine:check     # vérifie le comportement du moteur de recommandation
 npm run coach:check      # vérifie le routage des réponses du Coach IA
+npm run rls:check        # rejoue les migrations sur une base jetable et teste
+                         # le cloisonnement réel entre deux joueurs
+npm run env:check        # vérifie la présence des variables EXPO_PUBLIC_*
 ```
 
 ## 6. Entraînements personnalisés
@@ -232,15 +235,36 @@ gratuit ne permet pas TestFlight.
 
 Les variables `EXPO_PUBLIC_*` vivent dans `.env`, qui n'est pas versionné : le
 build EAS tourne sur un serveur distant et ne les verrait pas. Il faut donc les
-déclarer une fois sur EAS.
+déclarer une fois sur EAS, dans chaque environnement que l'on compte utiliser.
+
+Chaque profil de `eas.json` est relié à l'environnement du même nom
+(`"environment": "production"`, etc.) : le dépôt ne contient donc jamais de
+valeur, seulement le nom de l'environnement où EAS doit aller les chercher.
 
 ```bash
 eas env:create --name EXPO_PUBLIC_SUPABASE_URL      --value "https://<ref>.supabase.co" --visibility plaintext --environment production
 eas env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<clé anon>"                --visibility plaintext --environment production
 
+# Vérifier ce qui est enregistré (affiche les noms, pas les valeurs) :
+eas env:list --environment production
+
 eas build --profile production --platform ios
 eas submit --profile production --platform ios --latest
 ```
+
+Ces variables sont **figées dans le bundle au moment de la compilation**. Un
+build lancé sans elles produit un binaire définitivement inutilisable, et le
+problème ne se verrait qu'une fois l'app installée. Deux garde-fous sont en
+place :
+
+- le hook `eas-build-pre-install` exécute `scripts/check-env.mjs` sur les
+  serveurs EAS et **fait échouer le build** si une variable manque, avec la
+  liste des noms absents ;
+- si un build passait malgré tout sans configuration, l'application affiche un
+  écran « Configuration incomplète » nommant les variables manquantes, au lieu
+  de se fermer instantanément sans message.
+
+Aucun des deux n'affiche jamais la valeur d'une variable.
 
 `eas build` demande les identifiants Apple et génère lui-même le certificat de
 distribution et le profil de provisioning. `eas submit` envoie le `.ipa` sur

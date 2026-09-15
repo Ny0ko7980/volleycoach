@@ -10,6 +10,8 @@ import { fetchMyProfile } from "@/services/profileService";
 import { queryClient } from "@/lib/queryClient";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { ConfigErrorView } from "@/components/ConfigErrorView";
+import { isSupabaseConfigured, missingSupabaseEnvVars } from "@/lib/supabase";
 
 function RootNavigationGate() {
   const router = useRouter();
@@ -71,7 +73,11 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <StatusBar style="auto" />
-          <RootNavigationGate />
+          {isSupabaseConfigured ? (
+            <RootNavigationGate />
+          ) : (
+            <ConfigErrorView missing={missingSupabaseEnvVars} />
+          )}
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
