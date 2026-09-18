@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, AppState, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -59,6 +59,12 @@ export default function TrainingModeScreen() {
   const [satisfaction, setSatisfaction] = useState<number | null>(null);
   const [difficulty, setDifficulty] = useState<number | null>(null);
   const startedAt = useRef(Date.now());
+  // Instant auquel la récupération se termine. On raisonne sur une échéance
+  // absolue et non sur un compteur décrémenté : Android suspend les minuteurs
+  // JavaScript dès que l'application passe en arrière-plan, donc un décompte
+  // « -1 chaque seconde » se fige quand l'écran s'éteint. Avec une échéance,
+  // le temps restant se recalcule correctement au retour.
+  const restDeadline = useRef<number | null>(null);
   const sessionId = id; // workout_session id passed via route param
 
   useEffect(() => {
@@ -87,14 +93,32 @@ export default function TrainingModeScreen() {
 
   useEffect(() => {
     if (phase !== "rest" || paused) return;
-    if (restRemaining <= 0) {
-      setPhase("exercise");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      return;
+
+    function tick() {
+      const deadline = restDeadline.current;
+      if (deadline === null) return;
+      const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRestRemaining(left);
+      if (left === 0) {
+        restDeadline.current = null;
+        setPhase("exercise");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      }
     }
-    const t = setTimeout(() => setRestRemaining((r) => r - 1), 1000);
-    return () => clearTimeout(t);
-  }, [phase, restRemaining, paused]);
+
+    tick();
+    const interval = setInterval(tick, 500);
+    // Au retour au premier plan, l'affichage se remet à jour immédiatement
+    // au lieu d'attendre le prochain battement.
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") tick();
+    });
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, [phase, paused]);
 
   if (loading) return <LoadingView label="Chargement de la séance..." />;
   if (error) return <ErrorView message={error} />;
@@ -106,13 +130,31 @@ export default function TrainingModeScreen() {
   const isLast = index === exercises.length - 1;
   const isLastSet = setNumber >= current.sets;
 
+  function startRest(seconds: number) {
+    const total = Math.max(1, seconds);
+    setRestTotal(total);
+    setRestRemaining(total);
+    restDeadline.current = Date.now() + total * 1000;
+    setPaused(false);
+    setPhase("rest");
+  }
+
+  function toggleRestPause() {
+    if (paused) {
+      // Reprise : on repositionne l'échéance sur le temps qu'il restait.
+      restDeadline.current = Date.now() + restRemaining * 1000;
+      setPaused(false);
+      return;
+    }
+    restDeadline.current = null;
+    setPaused(true);
+  }
+
   function goToNextExercise() {
     if (!current) return;
     setIndex((i) => i + 1);
     setSetNumber(1);
-    setPhase("rest");
-    setRestRemaining(current.rest_seconds);
-    setRestTotal(current.rest_seconds || 1);
+    startRest(current.rest_seconds);
     if (sessionId) updateSessionProgress(sessionId, index + 1).catch(() => undefined);
   }
 
@@ -122,9 +164,7 @@ export default function TrainingModeScreen() {
     if (phase === "exercise") {
       if (!isLastSet) {
         setSetNumber((s) => s + 1);
-        setPhase("rest");
-        setRestRemaining(current.rest_seconds);
-        setRestTotal(current.rest_seconds || 1);
+        startRest(current.rest_seconds);
         return;
       }
       // Toutes les séries sont faites : on demande le ressenti avant de passer
@@ -133,6 +173,7 @@ export default function TrainingModeScreen() {
       return;
     }
     if (phase === "rest") {
+      restDeadline.current = null;
       setPhase("exercise");
       return;
     }
@@ -303,7 +344,7 @@ export default function TrainingModeScreen() {
               label="restant"
             />
             <View style={{ marginTop: spacing.xl, minWidth: 160 }}>
-              <Button label={paused ? "Reprendre" : "Pause"} variant="secondary" onPress={() => setPaused((p) => !p)} />
+              <Button label={paused ? "Reprendre" : "Pause"} variant="secondary" onPress={toggleRestPause} />
             </View>
           </View>
         ) : phase === "feedback" ? (

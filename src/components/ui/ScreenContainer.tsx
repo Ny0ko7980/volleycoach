@@ -26,6 +26,11 @@ export function ScreenContainer({ children, scroll = true, refreshing, onRefresh
     <SafeAreaView style={[styles.flex, { backgroundColor: theme.background }]} edges={["top"]}>
       <ScrollView
         contentContainerStyle={padded ? styles.padded : undefined}
+        // Sans ceci, quand le clavier est ouvert, le premier appui sur un
+        // bouton ne fait que le refermer : il faut appuyer deux fois pour
+        // valider. C'est le cas sur les neuf écrans qui utilisent TextField.
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         refreshControl={
           onRefresh ? (
             <RefreshControl refreshing={Boolean(refreshing)} onRefresh={onRefresh} tintColor={theme.primary} />

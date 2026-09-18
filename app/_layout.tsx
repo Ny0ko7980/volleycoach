@@ -43,6 +43,12 @@ function RootNavigationGate() {
 
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboardingGroup = segments[0] === "(onboarding)";
+    // La réinitialisation de mot de passe ouvre une session pour pouvoir
+    // appeler updateUser(). Le garde doit donc se taire complètement sur cet
+    // écran : sinon la session fraîchement ouverte déclenche une redirection
+    // (vers (tabs), ou vers l'onboarding si le profil n'est pas complet) avant
+    // que l'utilisateur ait pu saisir son nouveau mot de passe.
+    if (segments.join("/") === "(auth)/reset-password") return;
 
     if (!session) {
       if (!inAuthGroup) router.replace("/(auth)/login");
@@ -72,7 +78,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <StatusBar style="auto" />
+          {/* L'app est sombre en permanence (useAppTheme renvoie toujours
+              darkTheme). "auto" choisirait la couleur des icônes selon le thème
+              du téléphone : sur un appareil en mode clair, on obtenait des
+              icônes noires sur le fond quasi noir de l'app. */}
+          <StatusBar style="light" />
           {isSupabaseConfigured ? (
             <RootNavigationGate />
           ) : (
