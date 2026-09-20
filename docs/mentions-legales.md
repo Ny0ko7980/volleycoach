@@ -25,8 +25,8 @@ Personne physique agissant à titre individuel, sans activité commerciale.
 
 ## Hébergement des données
 
-**Supabase, Inc.**
-970 Toa Payoh North, #07-04, Singapour 318992
+**Supabase Pte. Ltd.**
+65 Chulia Street, #38-02/03, OCBC Centre, Singapour 049513
 [supabase.com](https://supabase.com)
 
 Les données de l'application sont hébergées dans un centre de données situé
