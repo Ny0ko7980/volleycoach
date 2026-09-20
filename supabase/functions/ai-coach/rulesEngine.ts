@@ -12,6 +12,9 @@ export interface PlayerContext {
   goals: string[];
 }
 
+// Les valeurs stockées en base (`outside_hitter`, `debutant`…) sont des
+// identifiants techniques : elles ne doivent jamais apparaître telles quelles
+// dans une réponse lue par un joueur.
 const POSITION_LABELS: Record<string, string> = {
   setter: "passeur",
   outside_hitter: "réceptionneur-attaquant",
@@ -19,6 +22,21 @@ const POSITION_LABELS: Record<string, string> = {
   middle_blocker: "central",
   libero: "libéro",
 };
+
+const LEVEL_LABELS: Record<string, string> = {
+  debutant: "débutant",
+  intermediaire: "intermédiaire",
+  avance: "avancé",
+  competition: "compétition",
+};
+
+export function positionLabel(value: string): string {
+  return POSITION_LABELS[value] ?? value;
+}
+
+export function levelLabel(value: string): string {
+  return LEVEL_LABELS[value] ?? value;
+}
 
 export const SAFETY_NOTICE =
   "⚠️ Je ne suis pas un professionnel de santé : si tu ressens une douleur, une gêne persistante ou une blessure, arrête l'exercice et consulte un médecin ou un kinésithérapeute du sport avant de continuer.";
@@ -39,7 +57,7 @@ const rules: Rule[] = [
   {
     keywords: ["réception", "manchette", "reception"],
     respond: (ctx) =>
-      `Pour progresser en réception (${POSITION_LABELS[ctx.position] ?? ctx.position}, niveau ${ctx.level}):\n` +
+      `Pour progresser en réception (${positionLabel(ctx.position)}, niveau ${levelLabel(ctx.level)}):\n` +
       `1. Travaille ta position de base: jambes fléchies, plateforme stable formée avant que le ballon n'arrive.\n` +
       `2. Priorise la qualité sur la quantité: 3x20 manchettes ciblées valent mieux que 100 manchettes sans repère.\n` +
       `3. Vise systématiquement le passeur, pas le plafond — c'est l'erreur n°1 des joueurs qui ratent leurs manchettes.\n` +
@@ -58,7 +76,7 @@ const rules: Rule[] = [
   {
     keywords: ["service", "smash", "ace"],
     respond: (ctx) =>
-      `Pour ton service (niveau ${ctx.level}):\n` +
+      `Pour ton service (niveau ${levelLabel(ctx.level)}):\n` +
       `1. Standardise ton lancer de balle — même hauteur, même point de lâcher à chaque fois.\n` +
       `2. Travaille d'abord la précision avec l'exercice "Services ciblés" avant de chercher la puissance.\n` +
       `3. Si tu es à l'aise techniquement, passe au "Service smashé — puissance" pour développer l'explosivité du bras.\n` +
@@ -67,7 +85,7 @@ const rules: Rule[] = [
   {
     keywords: ["attaque", "smasher", "frappe", "attaquer"],
     respond: (ctx) =>
-      `Pour ton attaque (${POSITION_LABELS[ctx.position] ?? ctx.position}):\n` +
+      `Pour ton attaque (${positionLabel(ctx.position)}):\n` +
       `1. Le timing de l'approche est la clé: synchronise ton dernier appui avec la montée du ballon.\n` +
       `2. Varie tes angles avec "Attaque en croisé + lecture de bloc" pour ne pas être prévisible.\n` +
       `3. Regarde les mains du bloqueur juste avant ton armé, pas avant — ça te donne l'info au bon moment.\n` +
@@ -104,7 +122,7 @@ const rules: Rule[] = [
   {
     keywords: ["r4", "réceptionneur-attaquant", "outside"],
     respond: (ctx) =>
-      `En tant que réceptionneur-attaquant (R4), niveau ${ctx.level}, priorise dans cet ordre:\n` +
+      `En tant que réceptionneur-attaquant (R4), niveau ${levelLabel(ctx.level)}, priorise dans cet ordre:\n` +
       `1. Réception — c'est le poste le plus sollicité en réception, la base de tout.\n` +
       `2. Attaque en ligne droite et croisé pour être imprévisible.\n` +
       `3. Détente pour gagner en puissance au-dessus du bloc.\n` +
@@ -153,7 +171,7 @@ export function generateRuleBasedReply(message: string, ctx: PlayerContext): str
   return (
     `Bonne question, ${ctx.username} ! Pour te donner un conseil précis, dis-moi sur quel aspect tu veux travailler: ` +
     `réception, service, attaque, bloc, détente, vitesse, défense ou régularité. ` +
-    `Tu peux aussi me demander des exercices réalisables chez toi, ou des conseils adaptés à ton poste (${ctx.position}).`
+    `Tu peux aussi me demander des exercices réalisables chez toi, ou des conseils adaptés à ton poste (${positionLabel(ctx.position)}).`
   );
 }
 

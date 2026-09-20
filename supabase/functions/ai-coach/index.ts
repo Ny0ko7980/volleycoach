@@ -19,6 +19,8 @@ import {
   buildSessionAcceptance,
   type CoachReply,
   mentionsPain,
+  positionLabel,
+  levelLabel,
   SAFETY_NOTICE,
   type PlayerContext,
 } from "./rulesEngine.ts";
@@ -228,10 +230,13 @@ function buildUserContent(
   stats: Record<string, unknown>[],
   sessions: Record<string, unknown>[]
 ): string {
+  // On envoie les libellés français plutôt que les identifiants techniques :
+  // le modèle reprend volontiers les termes qu'on lui donne, et « poste:
+  // outside_hitter » ressort tel quel dans sa réponse.
   const profil = [
     `pseudo: ${asData(ctx.username, 60)}`,
-    `poste: ${asData(ctx.position, 40)}`,
-    `niveau: ${asData(ctx.level, 40)}`,
+    `poste: ${asData(positionLabel(ctx.position), 40)}`,
+    `niveau: ${asData(levelLabel(ctx.level), 40)}`,
     `objectifs: ${ctx.goals.map((goal) => asData(goal, 120)).join(" | ")}`,
   ].join("\n");
 
