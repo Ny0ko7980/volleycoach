@@ -9,6 +9,7 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
 import { updateMyProfile } from "@/services/profileService";
 import { POSITIONS, LEVELS, OBJECTIVES } from "@/constants/positions";
+import { MINIMUM_AGE, MAXIMUM_AGE } from "@/constants/legal";
 import { spacing } from "@/constants/theme";
 import type { Objective, PlayerLevel, Position } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
@@ -36,13 +37,22 @@ export default function EditProfileScreen() {
       setError("Le pseudo, le poste et le niveau sont obligatoires.");
       return;
     }
+    const parsedAge = age.trim() ? Number(age) : null;
+    if (parsedAge !== null && (!Number.isFinite(parsedAge) || parsedAge < MINIMUM_AGE || parsedAge > MAXIMUM_AGE)) {
+      setError(
+        parsedAge < MINIMUM_AGE
+          ? `Coach Volley est réservé aux ${MINIMUM_AGE} ans et plus.`
+          : "Cet âge ne semble pas valide."
+      );
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
       const updated = await updateMyProfile({
         username: username.trim(),
         club: club.trim() || null,
-        age: age ? Number(age) : null,
+        age: parsedAge,
         height_cm: heightCm ? Number(heightCm) : null,
         position,
         level,
@@ -63,7 +73,7 @@ export default function EditProfileScreen() {
 
       <TextField label="Pseudo" value={username} onChangeText={setUsername} />
       <TextField label="Club" value={club} onChangeText={setClub} />
-      <TextField label="Âge" value={age} onChangeText={setAge} keyboardType="number-pad" />
+      <TextField label={`Âge (${MINIMUM_AGE} ans minimum)`} value={age} onChangeText={setAge} keyboardType="number-pad" />
       <TextField label="Taille (cm)" value={heightCm} onChangeText={setHeightCm} keyboardType="number-pad" />
 
       <Text style={[styles.label, { color: theme.textMuted }]}>Poste</Text>

@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Text, View, StyleSheet } from "react-native";
 import { Link, useRouter } from "expo-router";
+import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { LEGAL_URLS, MINIMUM_AGE } from "@/constants/legal";
 import { spacing } from "@/constants/theme";
 
 export default function RegisterScreen() {
@@ -75,6 +77,27 @@ export default function RegisterScreen() {
 
       <Button label="Créer mon compte" onPress={handleRegister} loading={loading} />
 
+      {/* Apple comme Google demandent que les conditions et la politique de
+          confidentialité soient accessibles au moment de la création du compte,
+          pas seulement enfouies dans les réglages. */}
+      <Text style={[styles.legal, { color: theme.textMuted }]}>
+        En créant un compte, tu confirmes avoir {MINIMUM_AGE} ans ou plus et acceptes les{" "}
+        <Text
+          style={{ color: theme.primary, fontWeight: "700" }}
+          onPress={() => void Linking.openURL(LEGAL_URLS.terms)}
+        >
+          conditions d'utilisation
+        </Text>{" "}
+        et la{" "}
+        <Text
+          style={{ color: theme.primary, fontWeight: "700" }}
+          onPress={() => void Linking.openURL(LEGAL_URLS.privacy)}
+        >
+          politique de confidentialité
+        </Text>
+        .
+      </Text>
+
       <View style={styles.footer}>
         <Text style={{ color: theme.textMuted }}>Déjà un compte ? </Text>
         <Link href="/(auth)/login" style={{ color: theme.primary, fontWeight: "700" }}>
@@ -86,6 +109,7 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  legal: { fontSize: 12, lineHeight: 18, marginTop: spacing.md, textAlign: "center" },
   header: { marginTop: spacing.xxl, marginBottom: spacing.xl },
   title: { fontSize: 24, fontWeight: "800" },
   subtitle: { fontSize: 14, marginTop: spacing.xs },

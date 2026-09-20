@@ -9,6 +9,7 @@ import { Chip } from "@/components/ui/Chip";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useOnboardingStore } from "@/store/onboardingStore";
 import { TRAINING_FREQUENCIES } from "@/constants/positions";
+import { MINIMUM_AGE, MAXIMUM_AGE } from "@/constants/legal";
 import { spacing } from "@/constants/theme";
 
 export default function ProfileInfoScreen() {
@@ -22,6 +23,18 @@ export default function ProfileInfoScreen() {
       setError("Le pseudo est obligatoire.");
       return;
     }
+    // La base refuse de toute façon un âge hors bornes (contrainte
+    // `player_profiles_age_check`) : on le dit ici pour que le joueur le
+    // découvre tout de suite, et pas après quatre écrans d'onboarding.
+    const parsedAge = data.age.trim() ? Number(data.age) : null;
+    if (parsedAge !== null && (!Number.isFinite(parsedAge) || parsedAge < MINIMUM_AGE || parsedAge > MAXIMUM_AGE)) {
+      setError(
+        parsedAge < MINIMUM_AGE
+          ? `Coach Volley est réservé aux ${MINIMUM_AGE} ans et plus.`
+          : "Cet âge ne semble pas valide."
+      );
+      return;
+    }
     setError(null);
     router.push("/(onboarding)/position");
   }
@@ -31,7 +44,13 @@ export default function ProfileInfoScreen() {
       <StepHeader step={1} total={4} title="Parle-nous de toi" subtitle="Ces informations personnalisent ton suivi." />
 
       <TextField label="Prénom / pseudo" value={data.username} onChangeText={(v) => data.update({ username: v })} placeholder="Adrien" />
-      <TextField label="Âge" value={data.age} onChangeText={(v) => data.update({ age: v })} keyboardType="number-pad" placeholder="16" />
+      <TextField
+        label={`Âge (${MINIMUM_AGE} ans minimum)`}
+        value={data.age}
+        onChangeText={(v) => data.update({ age: v })}
+        keyboardType="number-pad"
+        placeholder="16"
+      />
       <TextField
         label="Taille (cm)"
         value={data.height_cm}

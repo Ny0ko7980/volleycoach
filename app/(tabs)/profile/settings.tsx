@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Alert, Switch, Text, View, StyleSheet } from "react-native";
-import { Trash2 } from "lucide-react-native";
+import { Alert, Pressable, Switch, Text, View, StyleSheet } from "react-native";
+import * as Linking from "expo-linking";
+import { ChevronRight, Trash2 } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -16,6 +17,7 @@ import {
   cancelAllNotifications,
 } from "@/services/notificationsService";
 import { errorMessage } from "@/utils/errors";
+import { LEGAL_URLS } from "@/constants/legal";
 import { spacing } from "@/constants/theme";
 
 // Mot à recopier pour armer la suppression. Un simple bouton « confirmer »
@@ -115,6 +117,22 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
+      <Card noPadding>
+        {LEGAL_DOCUMENTS.map((doc, index) => (
+          <Pressable
+            key={doc.url}
+            onPress={() => void Linking.openURL(doc.url)}
+            style={[
+              styles.legalRow,
+              index > 0 && { borderTopWidth: 1, borderTopColor: theme.border },
+            ]}
+          >
+            <Text style={{ color: theme.text, flex: 1 }}>{doc.label}</Text>
+            <ChevronRight size={18} color={theme.textMuted} />
+          </Pressable>
+        ))}
+      </Card>
+
       <Card style={{ borderColor: theme.danger }}>
         <Text style={{ color: theme.text, fontWeight: "700" }}>Supprimer mon compte</Text>
         <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: spacing.xs }}>
@@ -167,7 +185,19 @@ export default function SettingsScreen() {
   );
 }
 
+const LEGAL_DOCUMENTS = [
+  { label: "Politique de confidentialité", url: LEGAL_URLS.privacy },
+  { label: "Conditions d'utilisation", url: LEGAL_URLS.terms },
+  { label: "Mentions légales", url: LEGAL_URLS.legalNotice },
+];
+
 const styles = StyleSheet.create({
+  legalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
   title: { fontSize: 22, fontWeight: "800", marginTop: spacing.sm, marginBottom: spacing.lg },
   row: { flexDirection: "row", alignItems: "center" },
 });

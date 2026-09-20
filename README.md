@@ -372,7 +372,35 @@ Edge Function.
 14. **Admin** : passer un compte en `role='admin'` via SQL (voir ci-dessus) → le bouton "⚙️ Administration" apparaît dans Profil → créer un nouvel exercice, vérifier qu'il apparaît dans la bibliothèque d'exercices, le modifier, puis le supprimer.
 15. **Admin — utilisateurs** : Administration → Gérer les utilisateurs → changer le rôle d'un autre compte de "Joueur" à "Coach" → vérifier la mise à jour immédiate du badge de rôle.
 
-## 11. Prochaines étapes suggérées
+## 11. Documents légaux
+
+Trois documents sont versionnés dans `docs/` :
+
+| Document | Fichier |
+|---|---|
+| Politique de confidentialité | `docs/politique-de-confidentialite.md` |
+| Conditions générales d'utilisation | `docs/conditions-generales-utilisation.md` |
+| Mentions légales | `docs/mentions-legales.md` |
+
+Ils sont liés depuis l'écran d'inscription et depuis Profil → Réglages, via les
+URLs de `src/constants/legal.ts`. **Apple exige une URL de politique de
+confidentialité accessible sans installer l'application** pour toute publication
+sur l'App Store : elle doit pointer vers une page publique, pas vers un fichier
+local.
+
+Chaque document contient des `[À COMPLÉTER : …]` — identité du responsable de
+traitement et adresse de contact — qui doivent être renseignés avant
+publication.
+
+**Âge minimum : 15 ans.** C'est le seuil français de l'article 8 du RGPD, en
+dessous duquel un consentement parental serait nécessaire. Il est appliqué à
+trois endroits : la contrainte `player_profiles_age_check` (migration `0015`),
+la validation des écrans d'inscription et d'édition du profil, et la constante
+`MINIMUM_AGE` de `src/constants/legal.ts`. La migration `0015` s'interrompt sans
+rien modifier si des profils existants déclarent un âge inférieur, en indiquant
+combien : c'est une décision à prendre au cas par cas, pas en silence.
+
+## 12. Prochaines étapes suggérées
 
 - Intégration Stripe / achats intégrés pour l'offre Premium
 - Connexion Apple/Google (Supabase Auth le supporte nativement, juste à activer côté dashboard + ajouter les boutons)
