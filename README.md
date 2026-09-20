@@ -142,6 +142,22 @@ garde-fous s'appliquent mais les réponses passent par l'API Anthropic avec le
 contexte complet du joueur (profil, statistiques récentes, séances récentes)
 construit côté serveur.
 
+**Plafond de dépense.** Les appels réellement facturés (ceux qui atteignent le
+modèle) sont plafonnés à **30 par joueur et par jour**. Le compteur vit dans la
+table `ai_usage` et le plafond dans la fonction `consume_ai_quota()`
+(migration `0014`) — pas dans un paramètre, pour qu'un client ne puisse pas le
+relever en appelant la RPC lui-même. Au-delà du plafond, le Coach IA continue de
+répondre avec le moteur de règles : la fonctionnalité reste disponible, seule la
+dépense est bornée. Le message entrant est par ailleurs tronqué à 2 000
+caractères et le corps de requête refusé au-delà de 32 Ko.
+
+**Données du joueur et instructions.** Le prompt système ne contient que des
+consignes. Le pseudo, les objectifs et les métriques — tous saisis par
+l'utilisateur — descendent dans le message utilisateur, à l'intérieur de blocs
+balisés que le prompt système désigne explicitement comme des données, jamais
+comme des instructions. Les chevrons et les caractères de contrôle sont retirés
+de ces valeurs pour qu'elles ne puissent pas simuler la fermeture d'un bloc.
+
 ## 4. Lancer l'application
 
 ```bash
@@ -323,6 +339,7 @@ Notes de configuration liées à la soumission :
 | Notifications locales (rappel quotidien, série, objectif, badge) | ✅ Fonctionnel (expo-notifications) |
 | Mode hors-ligne (cache exercices, file d'attente fin de séance) | ⚠️ Partiel — cache lecture + file d'attente d'écriture simple, pas de résolution de conflits |
 | RLS Supabase (isolation stricte par joueur) | ✅ Fonctionnel |
+| Suppression de compte depuis l'app (profil, séances, stats, objectifs, badges, conversations) | ✅ Fonctionnel — Profil → Réglages, double confirmation, irréversible |
 | Équipe / Club | ✅ Fonctionnel (v1 simplifiée) : un joueur crée une équipe (devient coach), partage un code d'invitation, les autres rejoignent avec ce code ; le coach consulte le roster (poste/niveau/série) |
 | Interface admin | ✅ Fonctionnel : statistiques globales, gestion complète des exercices (créer/modifier/supprimer) et gestion des utilisateurs (liste + changement de rôle), accès verrouillé côté base de données à `role='admin'` |
 | Monétisation Premium | ⚠️ Architecture prête (`is_premium`, composant `PremiumGate`), aucun paiement réel (comme demandé) |

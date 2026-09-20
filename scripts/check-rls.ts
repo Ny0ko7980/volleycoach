@@ -25,6 +25,11 @@ import { join } from "node:path";
 const ALICE = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const BOB = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 const ADMIN = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+// Comptes jetables du scénario C : la suppression de compte détruit
+// réellement des lignes, elle ne peut pas s'exercer sur Alice ou Bob sans
+// fausser les scénarios précédents.
+const CAROL = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+const DAVE = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
 
 let failures = 0;
 let checks = 0;
@@ -491,6 +496,121 @@ function normalUseScenarios(t: Target) {
   else fail("compteurs admin", `profils=${profiles} séances=${sessions} objectifs=${goalsCount}`);
 }
 
+function accountAndQuotaScenarios(t: Target) {
+  console.log("\n\x1b[1mC. Suppression de compte et plafond du Coach IA (migration 0014)\x1b[0m\n");
+
+  // Deux comptes jetables, avec de vraies données des deux côtés : sans le
+  // second, on ne pourrait pas distinguer « la cascade a tout effacé » de
+  // « la cascade a effacé trop de choses ».
+  const seedData = (uid: string, tag: string) => `
+    insert into public.workouts (id, player_id, title, objective, duration_minutes)
+      values (gen_random_uuid(),'${uid}','Séance de ${tag}','reception',45);
+    insert into public.workout_sessions (player_id, workout_id, status)
+      select '${uid}', id, 'completed' from public.workouts where player_id='${uid}' limit 1;
+    insert into public.statistics (player_id, category, metric, value) values ('${uid}','service','aces',7);
+    insert into public.goals (player_id, name, category, target_value) values ('${uid}','Objectif de ${tag}','service',40);
+    insert into public.player_skill_scores (player_id, skill, score, sample_size) values ('${uid}','service',55,3);
+    insert into public.skill_signals (player_id, skill, source, direction) values ('${uid}','service','feedback','weakness');
+    insert into public.ai_conversations (player_id, title) values ('${uid}','Conversation de ${tag}');
+    insert into public.ai_messages (conversation_id, role, content)
+      select id, 'user', 'Message de ${tag}' from public.ai_conversations where player_id='${uid}' limit 1;
+  `;
+
+  const prepared = t.psql(`
+    insert into auth.users (id, email) values ('${CAROL}','carol@test.local'), ('${DAVE}','dave@test.local')
+      on conflict (id) do nothing;
+    ${seedData(CAROL, "Carol")}
+    ${seedData(DAVE, "Dave")}
+  `);
+  if (prepared.error) {
+    fail("préparation du scénario C", firstLine(prepared.error));
+    return;
+  }
+
+  // --- Plafond quotidien ---------------------------------------------------
+  console.log("  Plafond quotidien d'appels au modèle de langage");
+
+  const QUOTA = 30;
+  let refusedAt = 0;
+  for (let i = 1; i <= QUOTA + 2; i += 1) {
+    const allowed = (t.psql(`select allowed from public.consume_ai_quota();`, CAROL).out || "").trim();
+    if (allowed !== "t" && refusedAt === 0) refusedAt = i;
+  }
+  if (refusedAt === QUOTA + 1) pass(`les ${QUOTA} premiers appels passent, le ${QUOTA + 1}ᵉ est refusé`);
+  else if (refusedAt === 0) fail("plafond IA", `aucun appel refusé après ${QUOTA + 2} tentatives — la dépense n'est pas bornée`);
+  else fail("plafond IA", `refus dès l'appel ${refusedAt} au lieu du ${QUOTA + 1}ᵉ`);
+
+  const counted = count(t, CAROL, `select message_count from public.ai_usage where player_id='${CAROL}'`);
+  if (counted === QUOTA) pass(`le compteur s'arrête au plafond (${counted}) au lieu de gonfler indéfiniment`);
+  else fail("compteur IA", `message_count=${counted} au lieu de ${QUOTA}`);
+
+  // Le plafond ne vaut que s'il n'est pas contournable par celui qu'il vise.
+  expectNoAccess(t, "la consommation d'un autre joueur reste invisible",
+    `select count(*) from public.ai_usage where player_id='${CAROL}'`);
+  {
+    const { rows } = affected(t, CAROL, `update public.ai_usage set message_count=0 where player_id='${CAROL}'`);
+    if (rows === 0) pass("remettre son propre compteur à zéro est refusé");
+    else fail("compteur IA", `${rows} ligne(s) remise(s) à zéro — le plafond se contourne`);
+  }
+  {
+    const { rows } = affected(t, CAROL, `delete from public.ai_usage where player_id='${CAROL}'`);
+    if (rows === 0) pass("supprimer sa propre ligne de quota est refusé");
+    else fail("compteur IA", `${rows} ligne(s) supprimée(s) — le plafond se contourne`);
+  }
+
+  const daveAllowed = (t.psql(`select allowed from public.consume_ai_quota();`, DAVE).out || "").trim();
+  if (daveAllowed === "t") pass("le plafond est par joueur : un autre compte n'est pas affecté");
+  else fail("plafond IA", "un joueur au plafond bloque les autres");
+
+  // --- Suppression de compte ----------------------------------------------
+  console.log("\n  Suppression de compte");
+
+  const anon = t.psql(`select public.delete_my_account();`);
+  if (anon.error) pass("un appel sans utilisateur authentifié est rejeté");
+  else fail("suppression de compte", "la RPC s'exécute sans utilisateur authentifié");
+
+  const before = count(t, DAVE, `select count(*) from public.player_profiles where id='${DAVE}'`);
+  const removal = t.psql(`select public.delete_my_account();`, CAROL);
+  if (removal.error) {
+    fail("suppression de compte", firstLine(removal.error));
+    return;
+  }
+  pass("le joueur supprime son propre compte");
+
+  // Lecture en superutilisateur : la RLS masquerait des lignes survivantes et
+  // ferait passer une cascade incomplète pour un succès.
+  const residual = t.psql(`
+    select (select count(*) from auth.users where id='${CAROL}')
+         + (select count(*) from public.player_profiles where id='${CAROL}')
+         + (select count(*) from public.workouts where player_id='${CAROL}')
+         + (select count(*) from public.workout_sessions where player_id='${CAROL}')
+         + (select count(*) from public.statistics where player_id='${CAROL}')
+         + (select count(*) from public.goals where player_id='${CAROL}')
+         + (select count(*) from public.player_skill_scores where player_id='${CAROL}')
+         + (select count(*) from public.skill_signals where player_id='${CAROL}')
+         + (select count(*) from public.ai_conversations where player_id='${CAROL}')
+         + (select count(*) from public.ai_usage where player_id='${CAROL}')
+         + (select count(*) from public.ai_messages m
+              where not exists (select 1 from public.ai_conversations c where c.id = m.conversation_id));`).out;
+  if (Number(residual) === 0) pass("aucune donnée du compte supprimé ne subsiste (profil, séances, stats, objectifs, IA)");
+  else fail("suppression de compte", `${residual} ligne(s) survivent à la suppression`);
+
+  const daveIntact = t.psql(`
+    select (select count(*) from public.player_profiles where id='${DAVE}')
+         + (select count(*) from public.workout_sessions where player_id='${DAVE}')
+         + (select count(*) from public.statistics where player_id='${DAVE}')
+         + (select count(*) from public.goals where player_id='${DAVE}')
+         + (select count(*) from public.player_skill_scores where player_id='${DAVE}')
+         + (select count(*) from public.skill_signals where player_id='${DAVE}')
+         + (select count(*) from public.ai_conversations where player_id='${DAVE}');`).out;
+  if (Number(daveIntact) === 7 && before === 1) pass("les données des autres joueurs sont intactes (7/7)");
+  else fail("suppression de compte", `${daveIntact}/7 lignes restantes chez l'autre joueur — la cascade a débordé`);
+
+  const library = count(t, DAVE, `select count(*) from public.exercises`);
+  if (library > 300) pass(`la bibliothèque partagée est intacte (${library} exercices)`);
+  else fail("suppression de compte", `${library} exercices restants — le contenu partagé a été emporté`);
+}
+
 // --- Exécution -------------------------------------------------------------
 
 const url = process.env.DATABASE_URL;
@@ -502,6 +622,7 @@ try {
   seed(target);
   attackScenarios(target);
   normalUseScenarios(target);
+  accountAndQuotaScenarios(target);
 } catch (e) {
   console.error(`\nErreur de préparation : ${(e as Error).message}`);
   target.cleanup();
