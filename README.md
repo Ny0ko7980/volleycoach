@@ -128,10 +128,17 @@ Un trigger (`handle_new_user`) crée automatiquement une ligne
 ### Edge Function — Coach IA
 
 ```bash
-supabase functions deploy ai-coach
+supabase functions deploy ai-coach --use-api
 # Optionnel : améliore la qualité des réponses en connectant un vrai LLM
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxxx
 ```
+
+`--use-api` envoie les sources à Supabase, qui compile la fonction sur ses
+serveurs. Sans ce drapeau, le CLI construit la fonction localement et doit
+télécharger `@supabase/supabase-js` depuis npm — ce qui échoue dans un
+environnement où `registry.npmjs.org` ne résout qu'en IPv6 sans route IPv6
+utilisable (cas d'un GitHub Codespace), avec l'erreur trompeuse
+`failed to create the graph / Temporary failure in name resolution`.
 
 **Sans clé configurée**, le Coach IA fonctionne quand même : il utilise un
 moteur de règles volleyball embarqué (`supabase/functions/ai-coach/rulesEngine.ts`)
