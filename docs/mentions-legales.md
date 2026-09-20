@@ -6,10 +6,10 @@
 
 ## Éditeur de l'application
 
-**[À COMPLÉTER : prénom et nom]**
+**Adrien Moine**
 Personne physique agissant à titre individuel, sans activité commerciale.
 
-**Contact : [À COMPLÉTER : adresse e-mail]**
+**Contact : coachvolley.contact@gmail.com**
 
 > *Remarque — Une personne physique qui édite un service en ligne à titre non
 > professionnel peut se limiter à indiquer son nom et une adresse de contact,
@@ -19,7 +19,7 @@ Personne physique agissant à titre individuel, sans activité commerciale.
 > professionnel, cette section devra être complétée par l'adresse, le numéro
 > SIREN et, le cas échéant, le numéro de TVA.*
 
-**Directeur de la publication : [À COMPLÉTER : prénom et nom]**
+**Directeur de la publication : Adrien Moine**
 
 ---
 

@@ -10,7 +10,7 @@ l'application.
 
 ## 1. Éditeur
 
-L'application est éditée par **[À COMPLÉTER : prénom et nom]**, personne
+L'application est éditée par **Adrien Moine**, personne
 physique agissant à titre individuel. Voir les
 [mentions légales](./mentions-legales.md).
 

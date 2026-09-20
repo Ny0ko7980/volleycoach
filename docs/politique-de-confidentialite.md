@@ -14,11 +14,11 @@ l'application. Rien n'est collecté « au cas où ».
 
 ## 1. Responsable du traitement
 
-Le responsable du traitement est **[À COMPLÉTER : prénom et nom]**, personne
+Le responsable du traitement est **Adrien Moine**, personne
 physique, agissant à titre individuel.
 
 Contact pour toute question ou demande relative à vos données :
-**[À COMPLÉTER : adresse e-mail de contact]**
+**coachvolley.contact@gmail.com**
 
 ---
 
@@ -191,7 +191,7 @@ Conformément au RGPD, vous disposez des droits suivants :
   réglages de l'application.
 
 Pour exercer un droit qui n'est pas directement accessible dans l'application,
-écrivez à **[À COMPLÉTER : adresse e-mail de contact]**. Une réponse vous sera
+écrivez à **coachvolley.contact@gmail.com**. Une réponse vous sera
 apportée dans un délai d'un mois.
 
 Si vous estimez que vos droits ne sont pas respectés, vous pouvez introduire une
