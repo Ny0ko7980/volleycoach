@@ -7,7 +7,7 @@ import type { PlayerTrainingContext, SessionRecommendation } from "@/services/re
  * Contrat volontairement étroit : l'IA ne reçoit que des exercices déjà
  * sélectionnés par la logique déterministe et ne peut que les réordonner ou en
  * écarter. Elle ne peut pas en inventer, ni en faire apparaître un qui ne
- * serait pas dans la bibliothèque VolleyCoach — la garantie ne repose pas sur
+ * serait pas dans la bibliothèque ORVADIN — la garantie ne repose pas sur
  * la consigne donnée au modèle, mais sur le fait que la fonction filtre sa
  * réponse contre la liste de candidats.
  *

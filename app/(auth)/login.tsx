@@ -8,6 +8,7 @@ import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { spacing, typography } from "@/constants/theme";
+import { APP_NAME } from "@/constants/brand";
 
 export default function LoginScreen() {
   const { theme } = useAppTheme();
@@ -39,7 +40,7 @@ export default function LoginScreen() {
         <View style={[styles.logoWrap, { backgroundColor: theme.primaryMuted }]}>
           <Volleyball size={28} color={theme.primary} />
         </View>
-        <Text style={[typography.titleXL, { color: theme.text }]}>Coach Volley</Text>
+        <Text style={[typography.titleXL, { color: theme.text }]}>{APP_NAME}</Text>
         <Text style={[typography.bodySecondary, styles.subtitle, { color: theme.textMuted }]}>Ton coach de volley-ball dans ta poche</Text>
       </View>
 

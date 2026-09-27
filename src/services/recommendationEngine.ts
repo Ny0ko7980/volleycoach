@@ -9,6 +9,7 @@ import type {
 } from "@/types/database";
 import { FEEDBACK_DIFFICULTY_DELTA, SCORED_SKILLS, skillForObjective, skillLabel } from "@/constants/skills";
 import type { SkillScoreResult } from "@/services/skillScoring";
+import { APP_NAME } from "@/constants/brand";
 
 /**
  * Moteur de recommandation — logique déterministe.
@@ -282,8 +283,8 @@ function nonEmpty(values: string[] | undefined): string[] | undefined {
 export function describeRecommendation(recommendation: SessionRecommendation): string {
   const primary = skillLabel(recommendation.primarySkill).toLowerCase();
   if (!recommendation.secondarySkill) {
-    return `Aujourd'hui, VolleyCoach te recommande de travailler ta ${primary}.`;
+    return `Aujourd'hui, ${APP_NAME} te recommande de travailler ta ${primary}.`;
   }
   const secondary = skillLabel(recommendation.secondarySkill).toLowerCase();
-  return `Aujourd'hui, VolleyCoach te recommande de travailler ta ${primary} et tes ${secondary}.`;
+  return `Aujourd'hui, ${APP_NAME} te recommande de travailler ta ${primary} et tes ${secondary}.`;
 }

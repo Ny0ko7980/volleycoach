@@ -1,4 +1,4 @@
--- Coach Volley — vérification de la RLS sur la base réelle (B1 / migration 0013)
+-- ORVADIN — vérification de la RLS sur la base réelle (B1 / migration 0013)
 --
 -- CE SCRIPT EST STRICTEMENT EN LECTURE SEULE.
 -- Il ne contient aucun INSERT, UPDATE, DELETE, DROP, TRUNCATE ni ALTER.

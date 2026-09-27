@@ -12,6 +12,7 @@ import { LoadingView } from "@/components/ui/LoadingView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { ConfigErrorView } from "@/components/ConfigErrorView";
 import { isSupabaseConfigured, missingSupabaseEnvVars } from "@/lib/supabase";
+import { APP_NAME } from "@/constants/brand";
 
 function RootNavigationGate() {
   const router = useRouter();
@@ -66,7 +67,7 @@ function RootNavigationGate() {
   }, [session, initializing, profile, profileLoading, segments, router]);
 
   if (initializing || profileLoading) {
-    return <LoadingView label="Chargement de Coach Volley..." />;
+    return <LoadingView label={`Chargement de ${APP_NAME}...`} />;
   }
 
   return <Slot />;

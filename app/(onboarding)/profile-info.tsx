@@ -11,6 +11,7 @@ import { useOnboardingStore } from "@/store/onboardingStore";
 import { TRAINING_FREQUENCIES } from "@/constants/positions";
 import { MINIMUM_AGE, MAXIMUM_AGE } from "@/constants/legal";
 import { spacing } from "@/constants/theme";
+import { APP_NAME } from "@/constants/brand";
 
 export default function ProfileInfoScreen() {
   const { theme } = useAppTheme();
@@ -30,7 +31,7 @@ export default function ProfileInfoScreen() {
     if (parsedAge !== null && (!Number.isFinite(parsedAge) || parsedAge < MINIMUM_AGE || parsedAge > MAXIMUM_AGE)) {
       setError(
         parsedAge < MINIMUM_AGE
-          ? `Coach Volley est réservé aux ${MINIMUM_AGE} ans et plus.`
+          ? `${APP_NAME} est réservé aux ${MINIMUM_AGE} ans et plus.`
           : "Cet âge ne semble pas valide."
       );
       return;

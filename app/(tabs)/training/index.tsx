@@ -15,6 +15,7 @@ import { fetchTodaySession, fetchSessionHistory } from "@/services/workoutServic
 import { spacing, typography, radius } from "@/constants/theme";
 import type { WorkoutSession } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
+import { APP_NAME } from "@/constants/brand";
 
 export default function TrainingHomeScreen() {
   const { theme } = useAppTheme();
@@ -81,7 +82,7 @@ export default function TrainingHomeScreen() {
         highlighted
         icon={<Sparkles size={20} color={theme.primary} />}
         title="Séance recommandée"
-        description="VolleyCoach compose la séance à partir de ton profil et de tes derniers retours."
+        description={`${APP_NAME} compose la séance à partir de ton profil et de tes derniers retours.`}
         onPress={() => router.push("/(tabs)/training/recommended")}
       />
       <ChoiceTile

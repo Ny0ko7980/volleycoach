@@ -4,7 +4,7 @@
 // sans lien entre eux et tente réellement, depuis le compte de l'un, de lire,
 // modifier et supprimer les données de l'autre. Chaque tentative doit échouer.
 //
-// Il vérifie aussi l'inverse — que le fonctionnement normal de VolleyCoach
+// Il vérifie aussi l'inverse — que le fonctionnement normal de ORVADIN
 // reste intact : chacun gère ses propres données, un coach voit le roster de
 // l'équipe qu'il a créée, un joueur rejoint et quitte une équipe.
 //

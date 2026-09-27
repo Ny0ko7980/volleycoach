@@ -24,6 +24,7 @@ import { positionLabel, levelLabel } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { Team, TeamMember } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
+import { APP_NAME } from "@/constants/brand";
 
 type ViewState =
   | { kind: "loading" }
@@ -92,7 +93,7 @@ function CoachView({ team, roster, onChanged }: { team: Team; roster: TeamMember
 
   async function handleShareCode() {
     await Share.share({
-      message: `Rejoins mon équipe "${team.name}" sur Coach Volley avec le code: ${team.invite_code}`,
+      message: `Rejoins mon équipe "${team.name}" sur ${APP_NAME} avec le code: ${team.invite_code}`,
     });
   }
 

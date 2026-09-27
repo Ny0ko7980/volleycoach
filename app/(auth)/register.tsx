@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { LEGAL_URLS, MINIMUM_AGE } from "@/constants/legal";
 import { spacing } from "@/constants/theme";
+import { APP_NAME } from "@/constants/brand";
 
 export default function RegisterScreen() {
   const { theme } = useAppTheme();
@@ -53,7 +54,7 @@ export default function RegisterScreen() {
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.text }]}>Créer un compte</Text>
         <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-          Rejoins Coach Volley et commence à progresser.
+          Rejoins {APP_NAME} et commence à progresser.
         </Text>
       </View>
 

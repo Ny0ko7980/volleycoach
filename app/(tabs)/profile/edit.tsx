@@ -13,6 +13,7 @@ import { MINIMUM_AGE, MAXIMUM_AGE } from "@/constants/legal";
 import { spacing } from "@/constants/theme";
 import type { Objective, PlayerLevel, Position } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
+import { APP_NAME } from "@/constants/brand";
 
 export default function EditProfileScreen() {
   const { theme } = useAppTheme();
@@ -41,7 +42,7 @@ export default function EditProfileScreen() {
     if (parsedAge !== null && (!Number.isFinite(parsedAge) || parsedAge < MINIMUM_AGE || parsedAge > MAXIMUM_AGE)) {
       setError(
         parsedAge < MINIMUM_AGE
-          ? `Coach Volley est réservé aux ${MINIMUM_AGE} ans et plus.`
+          ? `${APP_NAME} est réservé aux ${MINIMUM_AGE} ans et plus.`
           : "Cet âge ne semble pas valide."
       );
       return;

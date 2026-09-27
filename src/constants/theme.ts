@@ -1,4 +1,4 @@
-// Design system "Coach Volley" — source unique de vérité pour le rendu
+// Design system "ORVADIN" — source unique de vérité pour le rendu
 // visuel de toute l'app. Aucune couleur, taille de texte ou espacement ne
 // doit être recopié en dur dans un écran : tout référence ces tokens.
 

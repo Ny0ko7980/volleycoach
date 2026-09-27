@@ -1,4 +1,4 @@
-// Bibliothèque d'exercices Coach Volley — point d'entrée unique.
+// Bibliothèque d'exercices ORVADIN — point d'entrée unique.
 //
 // Les exercices sont répartis par catégorie dans des fichiers séparés pour
 // rester lisibles et éditables. Ce fichier les agrège, sans aucune logique

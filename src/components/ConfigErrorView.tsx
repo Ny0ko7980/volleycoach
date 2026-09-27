@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { radius, spacing, typography } from "@/constants/theme";
+import { APP_NAME } from "@/constants/brand";
 
 /**
  * Écran affiché quand l'app est lancée sans sa configuration Supabase.
@@ -22,7 +23,7 @@ export function ConfigErrorView({ missing }: { missing: string[] }) {
       </Text>
 
       <Text style={[styles.paragraph, { color: theme.textMuted }]}>
-        Coach Volley n&apos;a pas pu se connecter à sa base de données : ce build
+        {APP_NAME} n&apos;a pas pu se connecter à sa base de données : ce build
         a été compilé sans ses variables d&apos;environnement. L&apos;application
         ne peut pas démarrer tant qu&apos;elles ne sont pas définies.
       </Text>

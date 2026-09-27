@@ -1,4 +1,4 @@
-# Mentions légales — Coach Volley
+# Mentions légales — ORVADIN
 
 **Dernière mise à jour : 20 septembre 2026**
 
@@ -75,5 +75,5 @@ Autorité de contrôle compétente : **CNIL**, 3 place de Fontenoy, TSA 80715,
 
 ## Avertissement santé
 
-Coach Volley n'est pas un dispositif médical. Voir l'article 4 des
+ORVADIN n'est pas un dispositif médical. Voir l'article 4 des
 [conditions générales d'utilisation](./conditions-generales-utilisation.md).

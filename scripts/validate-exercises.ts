@@ -17,7 +17,7 @@ import { validateLibrary } from "./exerciseValidation";
 const partial = process.argv.includes("--partial");
 const { errors, countsByCategory, total } = validateLibrary(ALL_EXERCISES, { partial });
 
-console.log("Bibliothèque d'exercices Coach Volley\n");
+console.log("Bibliothèque d'exercices ORVADIN\n");
 for (const category of EXERCISE_CATEGORIES) {
   const actual = countsByCategory[category];
   const expected = CATEGORY_TARGETS[category];

@@ -1,8 +1,8 @@
-# Politique de confidentialité — Coach Volley
+# Politique de confidentialité — ORVADIN
 
 **Dernière mise à jour : 20 septembre 2026**
 
-Cette politique décrit les données que l'application mobile **Coach Volley**
+Cette politique décrit les données que l'application mobile **ORVADIN**
 collecte, pourquoi elle les collecte, avec qui elle les partage et comment vous
 gardez la main dessus.
 
@@ -28,7 +28,7 @@ L'application est réservée aux personnes de **15 ans ou plus**.
 
 En France, c'est le seuil fixé en application de l'article 8 du RGPD : en
 dessous, le traitement des données d'un mineur suppose le consentement conjoint
-du titulaire de l'autorité parentale. Coach Volley ne met pas en œuvre de
+du titulaire de l'autorité parentale. ORVADIN ne met pas en œuvre de
 recueil de ce consentement, et n'accepte donc pas d'inscription en dessous de
 15 ans. Cette limite est appliquée à la fois à la saisie et dans la base de
 données elle-même.

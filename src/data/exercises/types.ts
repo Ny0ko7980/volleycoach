@@ -1,4 +1,4 @@
-// Bibliothèque d'exercices Coach Volley — types stricts.
+// Bibliothèque d'exercices ORVADIN — types stricts.
 //
 // Cette bibliothèque est la SOURCE DE VÉRITÉ des exercices: elle est écrite en
 // TypeScript (un fichier par catégorie), validée par `npm run exercises:check`,

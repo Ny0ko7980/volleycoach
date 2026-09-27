@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { APP_NAME } from "@/constants/brand";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -19,7 +20,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   }
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
-      name: "Coach Volley",
+      name: APP_NAME,
       importance: Notifications.AndroidImportance.DEFAULT,
     });
   }
@@ -38,7 +39,7 @@ export async function scheduleDailyTrainingReminder(hour = 18, minute = 0) {
     identifier: DAILY_REMINDER_ID,
     content: {
       title: "C'est l'heure de progresser 🏐",
-      body: "Ta séance du jour t'attend dans Coach Volley.",
+      body: `Ta séance du jour t'attend dans ${APP_NAME}.`,
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },
   });

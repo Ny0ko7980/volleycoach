@@ -111,7 +111,7 @@ const nameAdoptions = ALL_EXERCISES.map(
   (exercise) => `    (${sqlText(exercise.id)}, ${sqlText(exercise.name)})`
 ).join(",\n");
 
-const sql = `-- Coach Volley — bibliothèque d'exercices (${ALL_EXERCISES.length} exercices).
+const sql = `-- ORVADIN — bibliothèque d'exercices (${ALL_EXERCISES.length} exercices).
 --
 -- FICHIER GÉNÉRÉ AUTOMATIQUEMENT — NE PAS ÉDITER À LA MAIN.
 -- Source : src/data/exercises/*.ts

@@ -5,6 +5,7 @@ import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Button } from "@/components/ui/Button";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { spacing, typography } from "@/constants/theme";
+import { APP_NAME } from "@/constants/brand";
 
 export default function WelcomeScreen() {
   const { theme } = useAppTheme();
@@ -16,7 +17,7 @@ export default function WelcomeScreen() {
         <View style={[styles.logoWrap, { backgroundColor: theme.primaryMuted }]}>
           <Volleyball size={36} color={theme.primary} />
         </View>
-        <Text style={[typography.titleXL, styles.title, { color: theme.text }]}>Bienvenue sur Coach Volley</Text>
+        <Text style={[typography.titleXL, styles.title, { color: theme.text }]}>Bienvenue sur {APP_NAME}</Text>
         <Text style={[typography.body, styles.subtitle, { color: theme.textMuted }]}>
           En 4 étapes rapides, on personnalise ton expérience: poste, niveau et objectifs pour te proposer les bons
           exercices dès aujourd'hui.

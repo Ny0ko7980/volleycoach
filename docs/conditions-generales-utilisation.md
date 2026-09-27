@@ -1,8 +1,8 @@
-# Conditions générales d'utilisation — Coach Volley
+# Conditions générales d'utilisation — ORVADIN
 
 **Dernière mise à jour : 20 septembre 2026**
 
-En créant un compte sur l'application **Coach Volley**, vous acceptez les
+En créant un compte sur l'application **ORVADIN**, vous acceptez les
 présentes conditions. Si vous n'en acceptez pas une partie, n'utilisez pas
 l'application.
 
@@ -18,7 +18,7 @@ physique agissant à titre individuel. Voir les
 
 ## 2. Objet du service
 
-Coach Volley est une application d'entraînement au volley-ball. Elle propose :
+ORVADIN est une application d'entraînement au volley-ball. Elle propose :
 
 - la génération de séances adaptées à un poste, un niveau, une durée et des
   objectifs déclarés ;
@@ -66,7 +66,7 @@ aux présentes conditions, notamment à l'article 6.
 
 ## 4. Avertissement relatif à la santé — important
 
-**Coach Volley n'est pas un dispositif médical et ne remplace ni un
+**ORVADIN n'est pas un dispositif médical et ne remplace ni un
 entraîneur, ni un préparateur physique, ni un professionnel de santé.**
 
 Les séances et conseils proposés sont générés automatiquement à partir de

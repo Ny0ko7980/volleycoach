@@ -1,4 +1,4 @@
-# Coach Volley 🏐
+# ORVADIN 🏐
 
 Application mobile complète (iOS/Android) de coaching volley-ball : profil joueur,
 génération de séances personnalisées, bibliothèque d'exercices, statistiques,
@@ -191,7 +191,7 @@ npm run env:check        # vérifie la présence des variables EXPO_PUBLIC_*
 
 Deux parcours partent de l'écran Entraînement, sous « Que veux-tu faire aujourd'hui ? » :
 
-- **Séance recommandée** — VolleyCoach choisit quoi travailler à partir du profil du joueur, de son historique et de ses retours, puis annonce la séance et, quand une donnée le justifie, la raison de ce choix.
+- **Séance recommandée** — ORVADIN choisit quoi travailler à partir du profil du joueur, de son historique et de ses retours, puis annonce la séance et, quand une donnée le justifie, la raison de ce choix.
 - **Choisir mon entraînement** — le joueur impose la compétence, la durée, l'intensité et le matériel. La séance passe par le **même moteur** : son poste, son niveau et ses ressentis continuent d'écarter les exercices inadaptés.
 
 ### L'axe de compétence
