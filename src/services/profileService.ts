@@ -54,5 +54,12 @@ export async function completeOnboarding(patch: Partial<PlayerProfile>): Promise
 export async function deleteMyAccount(): Promise<void> {
   const { error } = await supabase.rpc("delete_my_account");
   if (error) throw error;
-  await clearOfflineQueue();
+
+  // Au mieux : le compte est déjà supprimé côté serveur, et c'est
+  // irréversible. Laisser une erreur de stockage remonter ferait annoncer au
+  // joueur que la suppression a échoué alors qu'elle a bien eu lieu, et
+  // empêcherait la déconnexion qui suit.
+  await clearOfflineQueue().catch((e: unknown) =>
+    console.warn("File hors-ligne non vidée après la suppression du compte :", e)
+  );
 }

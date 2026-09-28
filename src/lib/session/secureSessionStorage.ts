@@ -63,8 +63,36 @@ async function withFallback<T>(secure: () => Promise<T>, plain: () => Promise<T>
   }
 }
 
+/**
+ * Efface la valeur du côté qui n'a pas servi, sans jamais échouer.
+ *
+ * Indispensable dès qu'un repli a eu lieu : le drapeau est remis à vrai au
+ * démarrage suivant, donc la lecture repasse par le coffre. Sans ce nettoyage,
+ * une déconnexion faite en mode replié n'effacerait que le stockage simple, et
+ * le jeton resté dans le coffre reconnecterait le joueur au redémarrage.
+ * Symétriquement, une session écrite en mode replié serait supplantée par la
+ * version périmée du coffre, dont le jeton de rafraîchissement a déjà été
+ * consommé.
+ */
+async function discardOtherSide(key: string, usedFallback: boolean): Promise<void> {
+  try {
+    if (usedFallback) await chunked.removeItem(key);
+    else await asyncStore.removeItem(key);
+  } catch {
+    // Au mieux : si l'autre côté est injoignable, il l'était déjà.
+  }
+}
+
 export const sessionStorage: KeyValueStore = {
   getItem: (key) => withFallback(() => chunked.getItem(key), () => asyncStore.getItem(key)),
-  setItem: (key, value) => withFallback(() => chunked.setItem(key, value), () => asyncStore.setItem(key, value)),
-  removeItem: (key) => withFallback(() => chunked.removeItem(key), () => asyncStore.removeItem(key)),
+
+  async setItem(key, value) {
+    await withFallback(() => chunked.setItem(key, value), () => asyncStore.setItem(key, value));
+    await discardOtherSide(key, !secureStoreUsable);
+  },
+
+  async removeItem(key) {
+    await withFallback(() => chunked.removeItem(key), () => asyncStore.removeItem(key));
+    await discardOtherSide(key, !secureStoreUsable);
+  },
 };

@@ -47,7 +47,8 @@ export const queryKeys = {
   },
   recommendation: {
     root: ["recommendation"] as const,
-    forPlayer: (playerId: string) => ["recommendation", playerId] as const,
+    forPlayer: (playerId: string, profileVersion: string) =>
+      ["recommendation", playerId, profileVersion] as const,
   },
   admin: {
     root: ["admin"] as const,

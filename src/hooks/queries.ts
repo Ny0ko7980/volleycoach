@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { QUERY_TIMEOUT_MS } from "@/lib/queryClient";
+import { QUERY_TIMEOUT_MS, queryClient } from "@/lib/queryClient";
 import { queryKeys } from "@/lib/queryKeys";
 import { withTimeout } from "@/utils/withTimeout";
 import { fetchExerciseById, fetchExercises, type ExerciseFilters } from "@/services/exerciseService";
@@ -215,8 +215,37 @@ export function useAllPlayers() {
  */
 export function useRecommendedSession(profile: PlayerProfile | null) {
   return useQuery({
-    queryKey: queryKeys.recommendation.forPlayer(profile?.id ?? ""),
+    // La clé porte aussi la date de dernière modification du profil : le
+    // contexte d'entraînement est construit à partir du profil entier, donc
+    // changer de poste ou d'objectif doit produire une nouvelle recommandation
+    // et non ressortir celle mise en cache.
+    queryKey: queryKeys.recommendation.forPlayer(profile?.id ?? "", profile?.updated_at ?? ""),
     queryFn: bounded(async () => recommendSession(await buildTrainingContext(profile as PlayerProfile)), "Séance recommandée"),
     enabled: Boolean(profile),
   });
+}
+
+/**
+ * Marque comme périmé tout ce qu'une séance terminée change.
+ *
+ * Sans cela, le journal d'entraînement pouvait ne pas montrer la séance qu'on
+ * venait de finir : il n'avait plus de rechargement systématique au montage,
+ * et rien ne lui disait que sa donnée avait vieilli. Même chose pour les
+ * statistiques, les récompenses du profil et la séance recommandée, qui est
+ * calculée à partir de l'historique.
+ *
+ * Exportée comme fonction et non comme hook : elle est appelée depuis l'écran
+ * de séance, après une écriture qui peut aussi venir de la file hors-ligne.
+ */
+export function invalidateAfterCompletedSession(): void {
+  for (const key of [
+    queryKeys.sessions.root,
+    queryKeys.statistics.root,
+    queryKeys.skillScores.root,
+    queryKeys.profile.root,
+    queryKeys.goals.root,
+    queryKeys.recommendation.root,
+  ]) {
+    void queryClient.invalidateQueries({ queryKey: key });
+  }
 }

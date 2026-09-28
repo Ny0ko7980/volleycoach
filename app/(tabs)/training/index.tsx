@@ -30,10 +30,13 @@ export default function TrainingHomeScreen() {
   const queryError = todayQuery.error ?? recentQuery.error;
   const isFetching = todayQuery.isFetching || recentQuery.isFetching;
 
+  // Dépendances sur les `refetch`, stables (voir stats/index.tsx).
+  const refetchToday = todayQuery.refetch;
+  const refetchRecent = recentQuery.refetch;
   const load = useCallback(() => {
-    void todayQuery.refetch();
-    void recentQuery.refetch();
-  }, [todayQuery, recentQuery]);
+    void refetchToday();
+    void refetchRecent();
+  }, [refetchToday, refetchRecent]);
 
   useFocusEffect(
     useCallback(() => {

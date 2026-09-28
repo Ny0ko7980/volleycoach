@@ -56,12 +56,20 @@ export default function ProgressScreen() {
     return { sessionsThisWeek: since(7), sessionsThisMonth: since(30) };
   }, [historyQuery.data]);
 
+  // Les dépendances sont les fonctions `refetch`, pas les objets de requête :
+  // ceux-ci sont recréés à chaque rendu, donc `load` changeait d'identité à
+  // chaque rendu, `useFocusEffect` relançait son effet, qui relançait un
+  // rendu — une boucle de rechargement sans fin tant que l'écran a le focus.
+  const refetchStats = statsQuery.refetch;
+  const refetchGoals = goalsQuery.refetch;
+  const refetchHistory = historyQuery.refetch;
+  const refetchSkills = skillsQuery.refetch;
   const load = useCallback(() => {
-    void statsQuery.refetch();
-    void goalsQuery.refetch();
-    void historyQuery.refetch();
-    void skillsQuery.refetch();
-  }, [statsQuery, goalsQuery, historyQuery, skillsQuery]);
+    void refetchStats();
+    void refetchGoals();
+    void refetchHistory();
+    void refetchSkills();
+  }, [refetchStats, refetchGoals, refetchHistory, refetchSkills]);
 
   useFocusEffect(
     useCallback(() => {

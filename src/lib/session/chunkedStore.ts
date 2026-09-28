@@ -25,9 +25,16 @@
  *     connexion. Rendre une valeur tronquée à Supabase produirait un état
  *     bien plus difficile à diagnostiquer.
  *  2. **Le manifeste fait foi.** Il est écrit en dernier et supprimé en
- *     premier. Tant qu'il n'est pas là, les morceaux déjà écrits sont
- *     invisibles : une écriture interrompue n'abîme donc jamais la session
- *     précédente au point de la rendre illisible — elle la rend absente.
+ *     premier, et il désigne une génération de morceaux.
+ *
+ *     La génération est ce qui rend une réécriture sûre. Écrire les nouveaux
+ *     morceaux par-dessus les anciens semblait suffisant — c'est faux : une
+ *     interruption laissait un début de nouvelle valeur suivi d'une fin
+ *     d'ancienne, que le manifeste inchangé déclarait lisible. On obtenait
+ *     donc une session corrompue, pas une session absente, ce qui est
+ *     exactement ce qu'on voulait éviter. En écrivant chaque version sous une
+ *     nouvelle génération, une écriture interrompue laisse simplement
+ *     l'ancienne intacte.
  */
 
 export interface KeyValueStore {
@@ -47,12 +54,14 @@ export interface KeyValueStore {
 export const CHUNK_SIZE = 1_024;
 
 interface Manifest {
-  v: 1;
+  v: 1 | 2;
   n: number;
+  /** Génération. Absente dans le format v1, où les morceaux n'en avaient pas. */
+  g?: number;
 }
 
-function chunkKey(key: string, index: number): string {
-  return `${key}.${index}`;
+function chunkKey(key: string, index: number, generation?: number): string {
+  return generation === undefined ? `${key}.${index}` : `${key}.g${generation}.${index}`;
 }
 
 function parseManifest(raw: string | null): Manifest | null {
@@ -60,9 +69,11 @@ function parseManifest(raw: string | null): Manifest | null {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
-    const { v, n } = parsed as Partial<Manifest>;
-    if (v !== 1 || typeof n !== "number" || !Number.isInteger(n) || n < 1) return null;
-    return { v, n };
+    const { v, n, g } = parsed as Partial<Manifest>;
+    if (v !== 1 && v !== 2) return null;
+    if (typeof n !== "number" || !Number.isInteger(n) || n < 1) return null;
+    if (v === 2 && (typeof g !== "number" || !Number.isInteger(g))) return null;
+    return v === 2 ? { v, n, g: g as number } : { v, n };
   } catch {
     return null;
   }
@@ -96,7 +107,7 @@ export function createChunkedStore(options: {
   async function readChunks(key: string, manifest: Manifest): Promise<string | null> {
     const parts: string[] = [];
     for (let i = 0; i < manifest.n; i += 1) {
-      const part = await secure.getItem(chunkKey(key, i));
+      const part = await secure.getItem(chunkKey(key, i, manifest.g));
       // Un morceau manquant rend la valeur inexploitable : mieux vaut une
       // absence franche qu'une session tronquée.
       if (part === null) return null;
@@ -105,9 +116,9 @@ export function createChunkedStore(options: {
     return parts.join("");
   }
 
-  async function clearChunks(key: string, from: number, to: number): Promise<void> {
-    for (let i = from; i < to; i += 1) {
-      await secure.removeItem(chunkKey(key, i));
+  async function clearChunks(key: string, count: number, generation?: number): Promise<void> {
+    for (let i = 0; i < count; i += 1) {
+      await secure.removeItem(chunkKey(key, i, generation));
     }
   }
 
@@ -131,20 +142,19 @@ export function createChunkedStore(options: {
     async setItem(key: string, value: string): Promise<void> {
       const previous = parseManifest(await secure.getItem(key));
       const chunks = splitIntoChunks(value, size);
+      const generation = ((previous?.g ?? 0) + 1) % 1_000_000;
 
-      // Les morceaux d'abord, le manifeste ensuite : tant qu'il n'est pas
-      // écrit, une interruption laisse la valeur « absente », jamais tronquée.
+      // Nouvelle génération d'abord, manifeste ensuite : tant qu'il n'est pas
+      // écrit, il continue de désigner l'ancienne génération, intacte. Une
+      // interruption ne dégrade donc rien.
       for (let i = 0; i < chunks.length; i += 1) {
-        await secure.setItem(chunkKey(key, i), chunks[i] as string);
+        await secure.setItem(chunkKey(key, i, generation), chunks[i] as string);
       }
-      await secure.setItem(key, JSON.stringify({ v: 1, n: chunks.length } satisfies Manifest));
+      await secure.setItem(key, JSON.stringify({ v: 2, n: chunks.length, g: generation } satisfies Manifest));
 
-      // Une valeur plus courte que la précédente laisse des morceaux orphelins
-      // derrière elle. Ils ne seraient jamais relus — le manifeste dit combien
-      // en lire — mais ils contiendraient encore un fragment de l'ancien jeton.
-      if (previous && previous.n > chunks.length) {
-        await clearChunks(key, chunks.length, previous.n);
-      }
+      // L'ancienne génération n'est plus atteignable, mais elle contient
+      // encore des fragments du jeton précédent : on l'efface.
+      if (previous) await clearChunks(key, previous.n, previous.g);
     },
 
     async removeItem(key: string): Promise<void> {
@@ -152,7 +162,7 @@ export function createChunkedStore(options: {
       // Le manifeste en premier : à partir de là, la valeur est invisible même
       // si la suppression des morceaux est interrompue.
       await secure.removeItem(key);
-      if (manifest) await clearChunks(key, 0, manifest.n);
+      if (manifest) await clearChunks(key, manifest.n, manifest.g);
       await legacy?.removeItem(key);
     },
   };

@@ -25,6 +25,7 @@ import { saveExerciseFeedback } from "@/services/feedbackService";
 import { refreshSkillScores } from "@/services/skillScoreService";
 import { applySessionRewards } from "@/services/gamificationService";
 import { notifyAchievementUnlocked } from "@/services/notificationsService";
+import { invalidateAfterCompletedSession } from "@/hooks/queries";
 import {
   classifySupabaseFailure,
   queueExerciseFeedback,
@@ -270,6 +271,11 @@ export default function TrainingModeScreen() {
       );
       return;
     }
+
+    // Le journal, les statistiques, le profil et la séance recommandée
+    // dépendent tous de cette écriture : on les marque périmés pour qu'ils se
+    // rechargent au lieu d'afficher un cache d'avant la séance.
+    invalidateAfterCompletedSession();
 
     // À partir d'ici la séance est enregistrée côté serveur. Tout ce qui suit
     // est un complément : un échec ne doit plus jamais faire croire au joueur

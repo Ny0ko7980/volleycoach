@@ -28,10 +28,15 @@ export default function AdminHomeScreen() {
   const error = statsQuery.error ?? exercisesQuery.error;
   const isFetching = statsQuery.isFetching || exercisesQuery.isFetching;
 
+  // Dépendances sur les `refetch`, stables (voir stats/index.tsx). Ici la
+  // boucle était doublement coûteuse : chaque passage réécrivait aussi les
+  // 331 exercices du catalogue sur le disque.
+  const refetchStats = statsQuery.refetch;
+  const refetchExercises = exercisesQuery.refetch;
   const load = useCallback(() => {
-    void statsQuery.refetch();
-    void exercisesQuery.refetch();
-  }, [statsQuery, exercisesQuery]);
+    void refetchStats();
+    void refetchExercises();
+  }, [refetchStats, refetchExercises]);
 
   useFocusEffect(
     useCallback(() => {

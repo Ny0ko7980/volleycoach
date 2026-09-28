@@ -54,11 +54,16 @@ export default function StatisticsScreen() {
   const queryError = statsQuery.error ?? historyQuery.error ?? goalsQuery.error;
   const isFetching = statsQuery.isFetching || historyQuery.isFetching || goalsQuery.isFetching;
 
+  // Dépendances sur les `refetch`, stables, et non sur les objets de requête,
+  // recréés à chaque rendu : sinon `useFocusEffect` boucle indéfiniment.
+  const refetchStats = statsQuery.refetch;
+  const refetchHistory = historyQuery.refetch;
+  const refetchGoals = goalsQuery.refetch;
   const load = useCallback(() => {
-    void statsQuery.refetch();
-    void historyQuery.refetch();
-    void goalsQuery.refetch();
-  }, [statsQuery, historyQuery, goalsQuery]);
+    void refetchStats();
+    void refetchHistory();
+    void refetchGoals();
+  }, [refetchStats, refetchHistory, refetchGoals]);
 
   useFocusEffect(
     useCallback(() => {

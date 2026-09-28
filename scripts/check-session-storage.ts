@@ -182,11 +182,39 @@ async function main(): Promise<void> {
       threw = true;
     }
     check("3. l'écriture interrompue remonte bien une erreur", threw);
-    check("3. des morceaux ont pourtant été écrits", secure.dump().has(`${KEY}.0`));
+    check("3. des morceaux ont pourtant été écrits", [...secure.dump().keys()].some((k) => k.startsWith(`${KEY}.g`)));
 
     const readBack = await createChunkedStore({ secure: makeSecureStoreFrom(secure) }).getItem(KEY);
     check("3. la relecture rend « absent », pas une session tronquée", readBack === null, String(readBack).slice(0, 40));
     check("3. (contrôle) la session complète aurait fait " + chunks.length + " morceaux", chunks.length > 1);
+  }
+
+  // -------------------------------------------------------------------------
+  // 3 bis. Réécriture interrompue par-dessus une valeur EXISTANTE.
+  //
+  // Le cas que le test précédent ne couvrait pas : il écrivait sur un stockage
+  // vide. Écrire les nouveaux morceaux par-dessus les anciens laissait, en cas
+  // d'interruption, un début de nouvelle valeur suivi d'une fin d'ancienne —
+  // une session corrompue que le manifeste inchangé déclarait lisible.
+  // -------------------------------------------------------------------------
+  {
+    const original = realisticSession();
+    const secure = makeSecureStore();
+    await createChunkedStore({ secure }).setItem(KEY, original);
+
+    // Le rafraîchissement du jeton réécrit la session, et l'écriture du
+    // manifeste échoue.
+    const renewed = realisticSession({ richMetadata: true });
+    const failing = createChunkedStore({ secure: makeFailingManifestStore(secure) });
+    try {
+      await failing.setItem(KEY, renewed);
+    } catch {
+      /* attendu */
+    }
+
+    const readBack = await createChunkedStore({ secure }).getItem(KEY);
+    check("3bis. la session précédente est toujours lisible, intacte", readBack === original);
+    check("3bis. ce n'est pas un mélange des deux versions", readBack !== renewed && readBack !== null);
   }
 
   // -------------------------------------------------------------------------
@@ -195,8 +223,9 @@ async function main(): Promise<void> {
   {
     const secure = makeSecureStore();
     const store = createChunkedStore({ secure });
-    await store.setItem(KEY, realisticSession());
-    secure.dump().delete(`${KEY}.1`);
+    await store.setItem(KEY, realisticSession({ richMetadata: true }));
+    const aChunk = [...secure.dump().keys()].find((k) => k.startsWith(`${KEY}.g`) && k.endsWith(".1"));
+    secure.dump().delete(aChunk as string);
 
     check("4. un morceau manquant rend la valeur absente", (await store.getItem(KEY)) === null);
   }
@@ -265,6 +294,18 @@ async function main(): Promise<void> {
     console.log(`${failures} CAS EN ÉCHEC`);
     process.exitCode = 1;
   }
+}
+
+/** Même coffre, mais dont l'écriture du manifeste échoue. */
+function makeFailingManifestStore(source: KeyValueStore): KeyValueStore {
+  return {
+    getItem: (key) => source.getItem(key),
+    setItem: async (key, value) => {
+      if (!key.includes(".g")) throw new Error(`écriture du manifeste refusée pour ${key}`);
+      await source.setItem(key, value);
+    },
+    removeItem: (key) => source.removeItem(key),
+  };
 }
 
 /** Recopie l'état d'un coffre simulé, sans son comportement d'échec. */

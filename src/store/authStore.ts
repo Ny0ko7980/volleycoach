@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { AppState } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { queryClient } from "@/lib/queryClient";
 
 interface AuthState {
   session: Session | null;
@@ -20,6 +21,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ session: data.session, initializing: false });
     });
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Le cache de requêtes est vidé dès qu'il n'y a plus de session. Les
+      // clés ne portent pas d'identifiant de compte : sans cela, un second
+      // joueur qui se connecte sur le même appareil dans les minutes qui
+      // suivent verrait s'afficher les statistiques, l'historique, les
+      // objectifs et les conversations du précédent.
+      if (!session) queryClient.clear();
       set({ session, initializing: false });
     });
 
@@ -50,6 +57,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // un jeton mort au lieu de revenir à l'écran de connexion.
       console.warn("Déconnexion distante impossible, session locale effacée :", error);
     }
+    queryClient.clear();
     set({ session: null });
   },
 }));
