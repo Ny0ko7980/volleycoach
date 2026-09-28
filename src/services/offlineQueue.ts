@@ -144,6 +144,14 @@ export function listFailedMutations(): Promise<FailedMutation[]> {
   return engine.listFailed();
 }
 
+/**
+ * Vide la file. Réservé à la suppression de compte — voir `clear()` dans le
+ * moteur pour la raison de ne jamais le faire à la déconnexion.
+ */
+export function clearOfflineQueue(): Promise<void> {
+  return engine.clear();
+}
+
 export function retryFailedMutations(): Promise<number> {
   return engine.retryFailed();
 }

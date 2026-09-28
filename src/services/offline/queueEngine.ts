@@ -325,6 +325,27 @@ export class OfflineQueueEngine {
     });
   }
 
+  /**
+   * Vide la file, en attente comme en échec.
+   *
+   * Seul usage prévu : la suppression de compte. Les mutations en attente
+   * visent des lignes qui n'existent plus, et les rejouer sous un autre compte
+   * ne produirait que des refus RLS — donc un bandeau « problème de
+   * synchronisation » incompréhensible pour le joueur suivant sur l'appareil.
+   *
+   * Ce n'est PAS ce qu'il faut faire à une simple déconnexion : un joueur qui
+   * se déconnecte avec des séances en attente doit les retrouver synchronisées
+   * en se reconnectant.
+   */
+  async clear(): Promise<void> {
+    await this.withLock(async () => {
+      this.lastError = null;
+      const empty = emptyQueue();
+      await this.save(empty);
+      this.publish(empty);
+    });
+  }
+
   private backoffMs(attempts: number): number {
     const base = this.deps.retryBaseMs ?? DEFAULT_RETRY_BASE_MS;
     const max = this.deps.retryMaxMs ?? DEFAULT_RETRY_MAX_MS;

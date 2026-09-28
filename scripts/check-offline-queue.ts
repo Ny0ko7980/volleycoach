@@ -489,6 +489,33 @@ async function main(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Purge : réservée à la suppression de compte.
+// ---------------------------------------------------------------------------
+{
+  const storage = makeStorage();
+  const clock = makeClock();
+  const engine = new OfflineQueueEngine({
+    storage,
+    handlers: { "op": async () => { throw rlsError(); } },
+    classify: classifySupabaseFailure,
+    now: clock.now,
+    newId,
+  });
+
+  await engine.enqueue("op", { n: 1 });
+  await engine.enqueue("op", { n: 2 });
+  await engine.flush();
+  const before = await engine.snapshot();
+  check("purge : la file contient bien des mutations avant", before.pending + before.failed > 0);
+
+  await engine.clear();
+  const after = await engine.snapshot();
+  check("purge : plus rien en attente ni en échec", after.pending === 0 && after.failed === 0);
+  check("purge : plus d'erreur affichée", after.lastError === null);
+  check("purge : le disque est bien vidé", !(storage.raw() ?? "").includes('"n":1'), storage.raw() ?? "");
+}
+
+// ---------------------------------------------------------------------------
 // Classification des erreurs : le choix le plus lourd de conséquences.
 // ---------------------------------------------------------------------------
 {

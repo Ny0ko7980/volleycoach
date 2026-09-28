@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { clearOfflineQueue } from "@/services/offlineQueue";
 import type { PlayerProfile } from "@/types/database";
 
 export async function fetchMyProfile(): Promise<PlayerProfile | null> {
@@ -44,8 +45,14 @@ export async function completeOnboarding(patch: Partial<PlayerProfile>): Promise
  * badges, conversations et messages du Coach IA.
  *
  * L'opération est irréversible et l'appelant doit l'avoir fait confirmer.
+ *
+ * La file hors-ligne est vidée dans la foulée : ses mutations visent des
+ * lignes qui n'existent plus. Sans cela, le prochain joueur à se connecter sur
+ * cet appareil verrait apparaître un bandeau « problème de synchronisation »
+ * causé par les refus RLS d'un compte supprimé.
  */
 export async function deleteMyAccount(): Promise<void> {
   const { error } = await supabase.rpc("delete_my_account");
   if (error) throw error;
+  await clearOfflineQueue();
 }
