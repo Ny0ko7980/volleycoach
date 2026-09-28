@@ -10,9 +10,12 @@ import { useProfileStore } from "@/store/profileStore";
 import { fetchMyProfile } from "@/services/profileService";
 import { queryClient } from "@/lib/queryClient";
 import { LoadingView } from "@/components/ui/LoadingView";
+import { ErrorView } from "@/components/ui/ErrorView";
+import { errorMessage } from "@/utils/errors";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { ConfigErrorView } from "@/components/ConfigErrorView";
 import { isSupabaseConfigured, missingSupabaseEnvVars } from "@/lib/supabase";
 import { APP_NAME } from "@/constants/brand";
@@ -23,6 +26,10 @@ function RootNavigationGate() {
   const { session, initializing, init } = useAuthStore();
   const { profile, setProfile } = useProfileStore();
   const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  // Incrémenté par « Réessayer » : relance le chargement du profil sans
+  // dépendre d'un changement de session.
+  const [reloadToken, setReloadToken] = useState(0);
 
   // Rejoue les mutations mises en attente hors-ligne (ouverture de session,
   // retour du réseau, retour au premier plan). Monté ici pour couvrir toute
@@ -42,10 +49,16 @@ function RootNavigationGate() {
       return;
     }
     setProfileLoading(true);
+    setProfileError(null);
     fetchMyProfile()
       .then(setProfile)
+      // Sans ce catch, un échec réseau au lancement laissait `profile` à null
+      // et le garde ci-dessous entrait quand même dans l'application : elle
+      // paraissait fonctionner, mais « Terminer la séance » ne faisait rien
+      // du tout (elle exige un profil), sans aucun message.
+      .catch((e: unknown) => setProfileError(errorMessage(e, "Ton profil n'a pas pu être chargé.")))
       .finally(() => setProfileLoading(false));
-  }, [session, initializing, setProfile]);
+  }, [session, initializing, setProfile, reloadToken]);
 
   useEffect(() => {
     if (initializing || profileLoading) return;
@@ -78,6 +91,12 @@ function RootNavigationGate() {
     return <LoadingView label={`Chargement de ${APP_NAME}...`} />;
   }
 
+  // Connecté mais profil illisible : on le dit et on propose de réessayer,
+  // plutôt que d'ouvrir une application à moitié fonctionnelle.
+  if (session && !profile && profileError) {
+    return <ErrorView message={profileError} onRetry={() => setReloadToken((n) => n + 1)} />;
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <Slot />
@@ -107,3 +126,10 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+/**
+ * expo-router utilise l'export nommé `ErrorBoundary` d'un fichier de layout
+ * comme frontière d'erreur pour tout ce que ce layout contient. L'exporter
+ * depuis le layout racine couvre donc l'application entière.
+ */
+export { AppErrorBoundary as ErrorBoundary };
