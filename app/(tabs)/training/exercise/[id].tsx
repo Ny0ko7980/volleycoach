@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Text, View, StyleSheet } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { TriangleAlert, Lightbulb, Clock } from "lucide-react-native";
@@ -10,30 +9,20 @@ import { ExerciseVideo } from "@/components/exercises/ExerciseVideo";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { fetchExerciseById } from "@/services/exerciseService";
+import { useExercise } from "@/hooks/queries";
 import { levelLabel, objectiveLabel, positionLabel } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
-import type { Exercise } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
 
 export default function ExerciseDetailScreen() {
   const { theme } = useAppTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [exercise, setExercise] = useState<Exercise | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: exercise, isPending, isError, error, refetch } = useExercise(id);
 
-  useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    fetchExerciseById(id)
-      .then(setExercise)
-      .catch((e) => setError(errorMessage(e, "Erreur de chargement.")))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) return <LoadingView />;
-  if (error) return <ErrorView message={error} />;
+  if (isPending) return <LoadingView />;
+  if (isError) {
+    return <ErrorView message={errorMessage(error, "Erreur de chargement.")} onRetry={() => void refetch()} />;
+  }
   if (!exercise) return <ErrorView message="Exercice introuvable." />;
 
   return (

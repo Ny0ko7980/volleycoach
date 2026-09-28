@@ -12,7 +12,7 @@ import { fetchExercises } from "@/services/exerciseService";
 import { fetchGlobalStats, deleteExerciseAsAdmin, type GlobalStats } from "@/services/adminService";
 import { objectiveLabel } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
-import type { Exercise } from "@/types/database";
+import type { ExerciseSummary } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
 
 export default function AdminHomeScreen() {
@@ -20,7 +20,7 @@ export default function AdminHomeScreen() {
   const router = useRouter();
   const { profile } = useProfileStore();
   const [stats, setStats] = useState<GlobalStats | null>(null);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [exercises, setExercises] = useState<ExerciseSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +44,7 @@ export default function AdminHomeScreen() {
     }, [load])
   );
 
-  async function handleDelete(exercise: Exercise) {
+  async function handleDelete(exercise: ExerciseSummary) {
     Alert.alert("Supprimer cet exercice ?", exercise.name, [
       { text: "Annuler", style: "cancel" },
       {

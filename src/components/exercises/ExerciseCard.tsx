@@ -4,10 +4,10 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { Badge } from "@/components/ui/Badge";
 import { DifficultyDots } from "@/components/ui/DifficultyDots";
 import { radius, shadow, spacing, typography } from "@/constants/theme";
-import type { Exercise } from "@/types/database";
+import type { ExerciseSummary } from "@/types/database";
 import { levelLabel, objectiveLabel } from "@/constants/positions";
 
-export function ExerciseCard({ exercise, onPress }: { exercise: Exercise; onPress?: () => void }) {
+export function ExerciseCard({ exercise, onPress }: { exercise: ExerciseSummary; onPress?: () => void }) {
   const { theme } = useAppTheme();
   return (
     <Pressable

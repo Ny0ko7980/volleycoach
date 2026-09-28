@@ -162,6 +162,30 @@ export interface Exercise {
   tags?: string[];
 }
 
+/**
+ * Exercice tel que les listes et le moteur de séance en ont besoin.
+ *
+ * Les colonnes de texte long — consignes détaillées, points de coaching,
+ * progressions, régressions — pèsent l'essentiel d'une ligne `exercises` et ne
+ * servent qu'à l'écran de détail et au mode entraînement. Les charger pour les
+ * 331 exercices du catalogue, jusqu'à neuf fois par génération de séance,
+ * était de loin la requête la plus coûteuse du projet.
+ *
+ * `description` reste incluse : la carte de la liste l'affiche et la recherche
+ * plein texte de l'écran bibliothèque la parcourt.
+ */
+export type ExerciseSummary = Omit<
+  Exercise,
+  | "instructions"
+  | "common_mistakes"
+  | "tips"
+  | "instruction_steps"
+  | "coaching_points"
+  | "common_mistakes_list"
+  | "progressions"
+  | "regressions"
+>;
+
 export interface Workout {
   id: string;
   player_id: string | null;

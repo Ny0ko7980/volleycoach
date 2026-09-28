@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, Text, TextInput, View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import NetInfo from "@react-native-community/netinfo";
 import { Search, SlidersHorizontal, X } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Chip } from "@/components/ui/Chip";
@@ -11,48 +10,43 @@ import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { fetchExercises, type ExerciseFilters } from "@/services/exerciseService";
-import { cacheExercisesForOffline, getCachedExercises } from "@/services/offlineQueue";
+import { type ExerciseFilters } from "@/services/exerciseService";
+import { getCachedExercises } from "@/services/offlineQueue";
+import { useExercises } from "@/hooks/queries";
 import { OBJECTIVES, LEVELS, POSITIONS } from "@/constants/positions";
 import { spacing, typography, radius } from "@/constants/theme";
-import type { Exercise, Objective, PlayerLevel, Position } from "@/types/database";
+import type { ExerciseSummary, Objective, PlayerLevel, Position } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
 
 export default function ExerciseLibraryScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
   const [filters, setFilters] = useState<ExerciseFilters>({});
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [offline, setOffline] = useState(false);
   const [query, setQuery] = useState("");
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  // Repli lu sur le disque : le cache de react-query vit en mémoire et
+  // disparaît à la fermeture de l'application. Le catalogue mis de côté par la
+  // file hors-ligne, lui, survit — c'est ce qui permet de consulter la
+  // bibliothèque dans un gymnase sans réseau, après redémarrage.
+  const [cachedExercises, setCachedExercises] = useState<ExerciseSummary[] | null>(null);
 
-  const load = useCallback(async (f: ExerciseFilters) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const net = await NetInfo.fetch();
-      if (net.isConnected === false) {
-        setOffline(true);
-        setExercises(await getCachedExercises<Exercise>());
-        return;
-      }
-      setOffline(false);
-      const data = await fetchExercises(f);
-      setExercises(data);
-      if (Object.keys(f).length === 0) await cacheExercisesForOffline(data);
-    } catch (e) {
-      setError(errorMessage(e, "Impossible de charger les exercices."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isPending, isError, error, refetch, isFetching } = useExercises(filters);
 
   useEffect(() => {
-    load(filters);
-  }, [filters, load]);
+    if (!isError) return;
+    let cancelled = false;
+    void getCachedExercises<ExerciseSummary>().then((cached) => {
+      if (!cancelled) setCachedExercises(cached);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isError]);
+
+  const offline = isError && (cachedExercises?.length ?? 0) > 0;
+  // Mémorisé : sans cela, une nouvelle référence de tableau à chaque rendu
+  // relancerait le filtrage de recherche en permanence.
+  const exercises = useMemo(() => data ?? cachedExercises ?? [], [data, cachedExercises]);
 
   function toggleFilter<K extends keyof ExerciseFilters>(key: K, value: ExerciseFilters[K]) {
     setFilters((prev) => ({ ...prev, [key]: prev[key] === value ? undefined : value }));
@@ -127,12 +121,12 @@ export default function ExerciseLibraryScreen() {
         ) : null}
       </View>
 
-      {loading ? <LinearProgress /> : null}
+      {isFetching ? <LinearProgress /> : null}
 
-      {loading ? (
+      {isPending ? (
         <LoadingView />
-      ) : error ? (
-        <ErrorView message={error} onRetry={() => load(filters)} />
+      ) : isError && !offline ? (
+        <ErrorView message={errorMessage(error, "Impossible de charger les exercices.")} onRetry={() => void refetch()} />
       ) : visibleExercises.length === 0 ? (
         <EmptyState icon={<Search size={26} color={theme.textMuted} />} title="Aucun exercice trouvé" description="Essaie d'autres filtres ou une autre recherche." />
       ) : (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, View, StyleSheet } from "react-native";
 import { Target } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
@@ -10,7 +10,8 @@ import { LoadingView } from "@/components/ui/LoadingView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { fetchGoals, createGoal, deleteGoal } from "@/services/goalsService";
+import { createGoal } from "@/services/goalsService";
+import { useDeleteGoal, useGoals } from "@/hooks/queries";
 import { OBJECTIVES } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { Goal, Objective } from "@/types/database";
@@ -18,23 +19,10 @@ import { errorMessage } from "@/utils/errors";
 
 export default function GoalsScreen() {
   const { theme } = useAppTheme();
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-
-  function load() {
-    setLoading(true);
-    setLoadError(null);
-    fetchGoals()
-      .then(setGoals)
-      // Sans ce catch, un échec réseau affichait « aucun objectif » : le
-      // joueur pouvait croire que ses objectifs avaient été perdus.
-      .catch((e: unknown) => setLoadError(errorMessage(e, "Tes objectifs n'ont pas pu être chargés.")))
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(load, []);
+  const { data, isPending, isError, error, refetch, isFetching } = useGoals();
+  const deleteGoalMutation = useDeleteGoal();
+  const goals = data ?? [];
 
   function handleDelete(goal: Goal) {
     Alert.alert("Supprimer cet objectif ?", goal.name, [
@@ -42,28 +30,35 @@ export default function GoalsScreen() {
       {
         text: "Supprimer",
         style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteGoal(goal.id);
-            setGoals((prev) => prev.filter((g) => g.id !== goal.id));
-          } catch (e) {
-            Alert.alert("Erreur", errorMessage(e, "Impossible de supprimer cet objectif."));
-          }
-        },
+        // La liste n'est plus mise à jour à la main : la mutation invalide la
+        // racine « objectifs », ce qui rafraîchit aussi l'objectif principal
+        // affiché sur l'accueil. C'est précisément ce que l'ancien
+        // `setGoals(prev => ...)` ne faisait pas.
+        onPress: () =>
+          deleteGoalMutation.mutate(goal.id, {
+            onError: (e) => Alert.alert("Erreur", errorMessage(e, "Impossible de supprimer cet objectif.")),
+          }),
       },
     ]);
   }
 
-  if (loading) return <LoadingView />;
+  if (isPending) return <LoadingView />;
   // Un échec de chargement doit se voir : sinon « aucun objectif » et « je
   // n'ai pas réussi à les lire » se ressemblent trop.
-  if (loadError) return <ErrorView message={loadError} onRetry={load} />;
+  if (isError) {
+    return (
+      <ErrorView
+        message={errorMessage(error, "Tes objectifs n'ont pas pu être chargés.")}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
 
   const active = goals.filter((g) => g.status === "active");
   const achieved = goals.filter((g) => g.status === "achieved");
 
   return (
-    <ScreenContainer onRefresh={load} refreshing={loading}>
+    <ScreenContainer onRefresh={() => void refetch()} refreshing={isFetching}>
       <View style={styles.headerRow}>
         <Text style={[styles.title, { color: theme.text }]}>Mes objectifs</Text>
         <Button label="+ Nouveau" fullWidth={false} onPress={() => setModalVisible(true)} />
@@ -92,8 +87,8 @@ export default function GoalsScreen() {
       <NewGoalModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        onCreated={(g) => {
-          setGoals((prev) => [g, ...prev]);
+        onCreated={() => {
+          void refetch();
           setModalVisible(false);
         }}
       />
@@ -101,7 +96,7 @@ export default function GoalsScreen() {
   );
 }
 
-function NewGoalModal({ visible, onClose, onCreated }: { visible: boolean; onClose: () => void; onCreated: (g: Goal) => void }) {
+function NewGoalModal({ visible, onClose, onCreated }: { visible: boolean; onClose: () => void; onCreated: () => void }) {
   const { theme } = useAppTheme();
   const [category, setCategory] = useState<Objective>("detente");
   const [current, setCurrent] = useState("");
@@ -121,8 +116,8 @@ function NewGoalModal({ visible, onClose, onCreated }: { visible: boolean; onClo
     setLoading(true);
     try {
       const goalDef = OBJECTIVES.find((o) => o.value === category)!;
-      const goal = await createGoal({ name: goalDef.label.replace("Améliorer ", ""), category, currentValue, targetValue, unit });
-      onCreated(goal);
+      await createGoal({ name: goalDef.label.replace("Améliorer ", ""), category, currentValue, targetValue, unit });
+      onCreated();
       setCurrent("");
       setTarget("");
       setUnit("");

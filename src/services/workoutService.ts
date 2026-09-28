@@ -1,15 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type {
-  Exercise,
-  Intensity,
-  Objective,
-  PlayerLevel,
-  PlayerProfile,
-  Position,
-  Workout,
-  WorkoutExercise,
-  WorkoutSession,
-} from "@/types/database";
+import type { ExerciseSummary, Intensity, Objective, PlayerLevel, PlayerProfile, Position, Workout, WorkoutExercise, WorkoutSession } from "@/types/database";
 import { fetchExercises } from "@/services/exerciseService";
 import { objectiveForSkill, skillLabel } from "@/constants/skills";
 // Type seul : `recommendationEngine` importe ce module pour l'historique des
@@ -78,7 +68,7 @@ const SHARED_SKILLS_LIMIT = 2;
  * Empêche de retenir deux exercices quasi identiques : même famille de geste et
  * au moins deux compétences travaillées en commun.
  */
-function tooSimilar(candidate: Exercise, selected: Exercise[]): boolean {
+function tooSimilar(candidate: ExerciseSummary, selected: ExerciseSummary[]): boolean {
   const candidateSkills = new Set(candidate.skills ?? []);
   if (candidateSkills.size === 0) return false;
 
@@ -89,7 +79,7 @@ function tooSimilar(candidate: Exercise, selected: Exercise[]): boolean {
   });
 }
 
-function shuffled(exercises: Exercise[]): Exercise[] {
+function shuffled(exercises: ExerciseSummary[]): ExerciseSummary[] {
   return [...exercises].sort(() => Math.random() - 0.5);
 }
 
@@ -99,14 +89,14 @@ function shuffled(exercises: Exercise[]): Exercise[] {
  * relâchée plutôt que de renvoyer un bloc vide.
  */
 function selectExercises(
-  pool: Exercise[],
+  pool: ExerciseSummary[],
   count: number,
   budgetMinutes: number,
-  alreadySelected: Exercise[]
-): Exercise[] {
+  alreadySelected: ExerciseSummary[]
+): ExerciseSummary[] {
   if (count <= 0 || pool.length === 0) return [];
 
-  const chosen: Exercise[] = [];
+  const chosen: ExerciseSummary[] = [];
   let usedMinutes = 0;
 
   for (const exercise of shuffled(pool)) {
@@ -218,7 +208,7 @@ export async function generateWorkout(
     ...situationBlock,
   ]);
 
-  const blocks: { phase: Phase; exercises: Exercise[] }[] = [
+  const blocks: { phase: Phase; exercises: ExerciseSummary[] }[] = [
     { phase: "echauffement", exercises: warmup },
     { phase: "technique", exercises: techniqueBlock },
     { phase: "situation", exercises: situationBlock },
@@ -302,7 +292,7 @@ function defaultTitle(params: GenerateWorkoutParams): string {
   return `Séance ${focus} — ${params.durationMinutes} min`;
 }
 
-function describeBlock(exercises: Exercise[], fallback: string): string {
+function describeBlock(exercises: ExerciseSummary[], fallback: string): string {
   if (exercises.length === 0) return fallback;
   return exercises
     .map((exercise) => `${exercise.name} — ${exercise.duration_minutes} min`)

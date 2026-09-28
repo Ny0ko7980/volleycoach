@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type {
   Exercise,
+  ExerciseSummary,
   ExerciseCategory,
   Intensity,
   Objective,
@@ -35,8 +36,34 @@ export interface ExerciseFilters {
   excludeTags?: string[];
 }
 
-export async function fetchExercises(filters: ExerciseFilters = {}): Promise<Exercise[]> {
-  let query = supabase.from("exercises").select("*").order("name", { ascending: true });
+/**
+ * Colonnes chargées pour une liste ou pour le moteur de séance.
+ *
+ * Tout ce qui sert à filtrer, trier, afficher une carte et rechercher — rien
+ * de plus. Les textes longs sont volontairement absents : voir
+ * `ExerciseSummary`.
+ */
+const LIST_COLUMNS = [
+  "id", "name", "description", "positions", "level", "objective",
+  "duration_minutes", "equipment", "difficulty", "media_url",
+  "created_by", "created_at", "updated_at",
+  "slug", "category", "skills", "levels", "objective_statement",
+  "players_min", "players_max", "intensity",
+  "solo_compatible", "ball_required", "physical_load", "technical_load", "tags",
+].join(", ");
+
+/**
+ * Garde-fou, pas une pagination : le catalogue compte 331 exercices et les
+ * filtres en renvoient toujours beaucoup moins. La borne existe pour qu'une
+ * requête sans filtre ne puisse jamais devenir illimitée si le catalogue
+ * grossit — l'écran bibliothèque filtre et recherche localement sur ce jeu,
+ * ce qui reste instantané à cette échelle et fonctionne hors ligne une fois en
+ * cache.
+ */
+const MAX_EXERCISES = 500;
+
+export async function fetchExercises(filters: ExerciseFilters = {}): Promise<ExerciseSummary[]> {
+  let query = supabase.from("exercises").select(LIST_COLUMNS).order("name", { ascending: true }).limit(MAX_EXERCISES);
 
   // Un tableau vide signifie "tous les postes" / "tous les niveaux".
   if (filters.position) query = query.or(`positions.cs.{${filters.position}},positions.eq.{}`);
@@ -62,7 +89,7 @@ export async function fetchExercises(filters: ExerciseFilters = {}): Promise<Exe
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as Exercise[];
+  return (data ?? []) as unknown as ExerciseSummary[];
 }
 
 export async function fetchExerciseById(id: string): Promise<Exercise | null> {

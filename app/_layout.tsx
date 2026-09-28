@@ -8,7 +8,7 @@ import { View } from "react-native";
 import { useAuthStore } from "@/store/authStore";
 import { useProfileStore } from "@/store/profileStore";
 import { fetchMyProfile } from "@/services/profileService";
-import { queryClient } from "@/lib/queryClient";
+import { connectQueryClientToAppLifecycle, queryClient } from "@/lib/queryClient";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { errorMessage } from "@/utils/errors";
@@ -35,6 +35,11 @@ function RootNavigationGate() {
   // retour du réseau, retour au premier plan). Monté ici pour couvrir toute
   // l'application, y compris quand le joueur n'est plus sur l'écran de séance.
   useOfflineSync();
+
+  // Relie react-query au cycle de vie React Native : retour au premier plan et
+  // retour du réseau. Sans cela, `refetchOnWindowFocus` n'a pas de fenêtre à
+  // écouter et le client se croit toujours en ligne.
+  useEffect(() => connectQueryClientToAppLifecycle(), []);
 
   useEffect(() => {
     const unsubscribe = init();
