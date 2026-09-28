@@ -7,9 +7,9 @@
  * son indicateur de chargement sans que le joueur puisse abandonner.
  *
  * Attention à ce que cette fonction ne fait pas : elle n'annule pas la requête
- * sous-jacente, elle arrête seulement de l'attendre. C'est suffisant pour
- * rendre la main à l'interface, et sans conséquence ici puisque les écritures
- * concernées sont idempotentes ou relues au chargement suivant.
+ * sous-jacente, elle arrête seulement de l'attendre. Le travail déjà engagé
+ * côté serveur se poursuit donc, et ses effets sont acquis. À n'utiliser que
+ * là où c'est acceptable — pas pour rendre une écriture rejouable.
  */
 export class TimeoutError extends Error {
   constructor(message: string) {

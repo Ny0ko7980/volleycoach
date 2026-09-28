@@ -57,6 +57,13 @@ export async function sendMessageToCoach(conversationId: string, content: string
   // Le Coach IA est l'appel le plus long de l'application : il peut traverser
   // un modèle de langage. Sans borne, un réseau qui pend laisse le joueur sur
   // un indicateur de chargement sans issue.
+  //
+  // Limite connue, à traiter séparément : le message du joueur est déjà
+  // enregistré au-dessus, et la fonction distante a peut-être déjà débité une
+  // unité de quota. Un dépassement de délai laisse donc une question sans
+  // réponse dans la conversation, et un nouvel essai en crée une seconde. La
+  // borne ci-dessous rend la main à l'interface, elle ne rend pas l'appel
+  // rejouable.
   const { data, error } = await withTimeout(
     supabase.functions.invoke<{
       reply: string;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Text, View, StyleSheet } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
@@ -6,6 +6,7 @@ import { TextField } from "@/components/ui/TextField";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { LoadingView } from "@/components/ui/LoadingView";
+import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { fetchExerciseById } from "@/services/exerciseService";
 import { createExerciseAsAdmin, updateExerciseAsAdmin } from "@/services/adminService";
@@ -23,6 +24,10 @@ export default function ExerciseFormScreen() {
   const isEditing = Boolean(id);
 
   const [loading, setLoading] = useState(isEditing);
+  // Distinct de `error`, qui sert aux refus de validation à l'enregistrement :
+  // ici l'exercice n'a pas pu être lu, donc le formulaire ne doit pas
+  // s'ouvrir du tout.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,11 +44,15 @@ export default function ExerciseFormScreen() {
   const [objective, setObjective] = useState<Objective>("global");
   const [difficulty, setDifficulty] = useState(2);
 
-  useEffect(() => {
+  const loadExercise = useCallback(() => {
     if (!id) return;
+    setLoading(true);
+    setLoadFailed(false);
+    setError(null);
     fetchExerciseById(id)
       .then((ex) => {
         if (!ex) {
+          setLoadFailed(true);
           setError("Cet exercice n'existe pas ou n'est plus accessible.");
           return;
         }
@@ -60,12 +69,17 @@ export default function ExerciseFormScreen() {
         setObjective(ex.objective);
         setDifficulty(ex.difficulty);
       })
-      .catch((e: unknown) => setError(errorMessage(e, "Cet exercice n'a pas pu être chargé.")))
+      .catch((e: unknown) => {
+        setLoadFailed(true);
+        setError(errorMessage(e, "Cet exercice n'a pas pu être chargé."));
+      })
       // `setLoading(false)` était à l'intérieur du `then`, après un `return`
       // précoce : un échec ou un exercice absent laissait un écran bloqué sur
       // le chargement, définitivement.
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(loadExercise, [loadExercise]);
 
   function togglePosition(p: Position) {
     setPositions((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
@@ -107,6 +121,14 @@ export default function ExerciseFormScreen() {
   }
 
   if (loading) return <LoadingView />;
+
+  // Lecture échouée : on n'ouvre surtout pas un formulaire rempli des valeurs
+  // par défaut des champs. Enregistrer aurait écrasé l'exercice réel avec ces
+  // valeurs — l'ancien écran bloqué sur le chargement l'empêchait par accident,
+  // pas par conception.
+  if (loadFailed) {
+    return <ErrorView message={error ?? "Cet exercice n'a pas pu être chargé."} onRetry={loadExercise} />;
+  }
 
   return (
     <ScreenContainer>

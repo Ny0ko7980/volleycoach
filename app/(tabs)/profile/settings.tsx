@@ -33,20 +33,43 @@ export default function SettingsScreen() {
   const [confirmation, setConfirmation] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  /**
+   * Deux états doivent rester d'accord : la préférence enregistrée sur le
+   * profil, que reflète l'interrupteur, et les rappels réellement programmés
+   * dans le système. Les désynchroniser donne le pire cas — un rappel qui
+   * sonne tous les soirs alors que l'interrupteur affiche « désactivé », que
+   * le joueur ne peut plus éteindre.
+   *
+   * On applique donc l'action système d'abord, l'enregistrement ensuite, et si
+   * l'enregistrement échoue on défait l'action système avant de le dire.
+   */
   async function handleToggleNotifications(value: boolean) {
     setBusy(true);
     try {
       if (value) {
         const granted = await requestNotificationPermissions();
-        if (granted) await scheduleDailyTrainingReminder(18, 0);
+        if (!granted) {
+          Alert.alert(
+            "Notifications refusées",
+            "Autorise les notifications dans les réglages de ton téléphone pour recevoir les rappels."
+          );
+          return;
+        }
+        await scheduleDailyTrainingReminder(18, 0);
       } else {
         await cancelAllNotifications();
       }
-      // L'état local n'est appliqué qu'après l'enregistrement serveur :
-      // l'inverse laissait l'interrupteur visuellement activé alors que le
-      // profil n'avait pas été mis à jour, et le réglage revenait en arrière
-      // au prochain chargement sans explication.
-      await updateMyProfile({ notifications_enabled: value });
+
+      try {
+        await updateMyProfile({ notifications_enabled: value });
+      } catch (e) {
+        // On remet les rappels système dans l'état que décrit le profil
+        // enregistré, celui que l'interrupteur va continuer d'afficher.
+        if (value) await cancelAllNotifications();
+        else await scheduleDailyTrainingReminder(18, 0);
+        throw e;
+      }
+
       updateLocal({ notifications_enabled: value });
     } catch (e) {
       Alert.alert(

@@ -425,7 +425,7 @@ export async function fetchSessionHistory(limit = 30): Promise<WorkoutSession[]>
  * On relit donc la proposition du jour au lieu d'en fabriquer une nouvelle.
  * `generated` distingue une séance produite par le moteur d'une séance créée à
  * la main par le joueur, qu'on ne veut pas lui resservir comme « séance du
- * jour ».
+ * jour », et une séance déjà jouée est écartée pour ne pas la reproposer.
  */
 export async function fetchTodayGeneratedWorkout(): Promise<(Workout & { exercises: WorkoutExercise[] }) | null> {
   const { data: auth } = await supabase.auth.getUser();
@@ -436,7 +436,7 @@ export async function fetchTodayGeneratedWorkout(): Promise<(Workout & { exercis
 
   const { data, error } = await supabase
     .from("workouts")
-    .select("*, exercises:workout_exercises(*, exercise:exercises(*))")
+    .select("*, exercises:workout_exercises(*, exercise:exercises(*)), sessions:workout_sessions(id)")
     .eq("player_id", auth.user.id)
     .eq("generated", true)
     .gte("created_at", startOfDay.toISOString())
@@ -446,9 +446,19 @@ export async function fetchTodayGeneratedWorkout(): Promise<(Workout & { exercis
   if (error) throw error;
   if (!data) return null;
 
-  const workout = data as Workout & { exercises: WorkoutExercise[] };
+  const workout = data as Workout & { exercises: WorkoutExercise[]; sessions: { id: string }[] };
+
+  // Déjà jouée : `fetchTodaySession` ne retient que les séances « planned » ou
+  // « in_progress », donc une séance terminée le matin ne s'y voit plus. Sans
+  // ce filtre, l'accueil reproposerait l'après-midi la séance que le joueur
+  // vient de finir, et « Commencer » ouvrirait une seconde session dessus.
+  if (workout.sessions.length > 0) return null;
+
   // Une séance sans exercice serait inutilisable : on préfère en régénérer une.
-  return workout.exercises.length > 0 ? workout : null;
+  if (workout.exercises.length === 0) return null;
+
+  const { sessions: _sessions, ...rest } = workout;
+  return rest as Workout & { exercises: WorkoutExercise[] };
 }
 
 export async function fetchTodaySession(): Promise<WorkoutSession | null> {
