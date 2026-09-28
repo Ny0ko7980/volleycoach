@@ -1,6 +1,7 @@
 import { create } from "zustand";
+import { AppState } from "react-native";
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 interface AuthState {
   session: Session | null;
@@ -21,7 +22,23 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       set({ session, initializing: false });
     });
-    return () => subscription.subscription.unsubscribe();
+
+    // Sur React Native, les minuteurs JavaScript sont suspendus ou étranglés
+    // quand l'application passe en arrière-plan : le rafraîchissement
+    // automatique du jeton s'arrête donc sans le dire, et la première requête
+    // au retour peut partir avec un jeton périmé. Supabase demande pour cette
+    // raison de piloter explicitement le rafraîchissement sur AppState — sinon
+    // il continue aussi à échouer en boucle pendant que l'app est en veille.
+    const appStateSubscription = AppState.addEventListener("change", (status) => {
+      if (!isSupabaseConfigured) return;
+      if (status === "active") supabase.auth.startAutoRefresh();
+      else supabase.auth.stopAutoRefresh();
+    });
+
+    return () => {
+      subscription.subscription.unsubscribe();
+      appStateSubscription.remove();
+    };
   },
   signOut: async () => {
     try {
