@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
 import { updateMyProfile } from "@/services/profileService";
+import { invalidateProfile } from "@/hooks/queries";
 import { POSITIONS, LEVELS, OBJECTIVES } from "@/constants/positions";
 import { MINIMUM_AGE, MAXIMUM_AGE } from "@/constants/legal";
 import { spacing } from "@/constants/theme";
@@ -60,6 +61,9 @@ export default function EditProfileScreen() {
         goals,
       });
       setProfile(updated);
+      // L'écran de profil reste monté sous celui-ci : sans invalidation il
+      // réafficherait la version d'avant modification.
+      invalidateProfile();
       router.back();
     } catch (e) {
       setError(errorMessage(e, "Impossible d'enregistrer les modifications."));

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
 import { updateMyProfile } from "@/services/profileService";
+import { invalidateProfile, invalidateStartedSession } from "@/hooks/queries";
 import {
   recommendSession,
   type RecommendationOverrides,
@@ -77,6 +78,7 @@ export default function ChooseWorkoutScreen() {
       const recommendation = recommendSession(context, overrides);
       const workout = await generateWorkoutFromRecommendation(recommendation, profile);
       const session = await startWorkoutSession(workout.id);
+      invalidateStartedSession();
       await rememberPreferences();
       router.replace(`/(tabs)/training/session/${session.id}`);
     } catch (e) {
@@ -94,7 +96,8 @@ export default function ChooseWorkoutScreen() {
   async function rememberPreferences() {
     const patch = { preferred_duration_minutes: duration, available_equipment: equipment };
     updateLocal(patch);
-    await updateMyProfile(patch).catch(() => undefined);
+    const saved = await updateMyProfile(patch).then(() => true).catch(() => false);
+    if (saved) invalidateProfile();
   }
 
   return (

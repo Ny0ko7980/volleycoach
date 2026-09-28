@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Flame, Lock, Calendar, Clock, Trophy, Target, Settings, LogOut, Users, ShieldCheck, Pencil } from "lucide-react-native";
@@ -13,75 +13,81 @@ import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useAuthStore } from "@/store/authStore";
-import { useProfileStore } from "@/store/profileStore";
-import { fetchMyProfile } from "@/services/profileService";
-import { fetchPlayerAchievements, fetchAllAchievements, xpToNextLevel } from "@/services/gamificationService";
-import { fetchSessionHistory } from "@/services/workoutService";
-import { fetchStatistics, computePersonalBest } from "@/services/statisticsService";
+import { useAchievements, useSessionHistory, useStatistics, useSyncedProfile } from "@/hooks/queries";
+import { xpToNextLevel } from "@/services/gamificationService";
+import { computePersonalBest } from "@/services/statisticsService";
 import { positionLabel, levelLabel, objectiveLabel, STAT_METRICS } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
 import { formatDurationMinutes } from "@/utils/duration";
-import type { Achievement, PlayerAchievement } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
 
 export default function ProfileScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
   const { signOut } = useAuthStore();
-  const { profile, setProfile } = useProfileStore();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [unlocked, setUnlocked] = useState<PlayerAchievement[]>([]);
-  const [allAchievements, setAllAchievements] = useState<Achievement[]>([]);
-  const [totalSessions, setTotalSessions] = useState(0);
-  const [totalMinutes, setTotalMinutes] = useState(0);
-  const [record, setRecord] = useState<{ label: string; value: string } | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [freshProfile, playerAchievements, achievements, sessions, allStats] = await Promise.all([
-        fetchMyProfile(),
-        fetchPlayerAchievements(),
-        fetchAllAchievements(),
-        fetchSessionHistory(500),
-        fetchStatistics(),
-      ]);
-      if (freshProfile) setProfile(freshProfile);
-      setUnlocked(playerAchievements);
-      setAllAchievements(achievements);
-      if (!freshProfile) setError("Profil introuvable.");
+  // Quatre lectures indépendantes, mises en cache et rafraîchies par
+  // react-query. L'ancien chargement manuel les refaisait toutes à chaque
+  // retour sur l'onglet, y compris les 500 séances d'historique.
+  const profileQuery = useSyncedProfile();
+  const achievementsQuery = useAchievements();
+  const historyQuery = useSessionHistory(500);
+  const statsQuery = useStatistics();
 
-      const completed = sessions.filter((s) => s.status === "completed");
-      setTotalSessions(completed.length);
-      setTotalMinutes(completed.reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0));
+  const profile = profileQuery.data ?? null;
+  const unlocked = achievementsQuery.data?.mine ?? [];
+  const allAchievements = achievementsQuery.data?.catalog ?? [];
 
-      let best: { label: string; value: number; display: string } | null = null;
-      for (const category of ["service", "reception", "attaque", "bloc", "defense", "physique"] as const) {
-        const pb = computePersonalBest(allStats.filter((s) => s.category === category));
-        if (!pb) continue;
-        if (!best || pb.value > best.value) {
-          const metricLabel = STAT_METRICS[category].find((m) => m.key === pb.metric)?.label ?? pb.metric;
-          best = { label: metricLabel, value: pb.value, display: `${pb.value}${pb.unit ?? ""}` };
-        }
+  const { totalSessions, totalMinutes } = useMemo(() => {
+    const completed = (historyQuery.data ?? []).filter((s) => s.status === "completed");
+    return {
+      totalSessions: completed.length,
+      totalMinutes: completed.reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0),
+    };
+  }, [historyQuery.data]);
+
+  const record = useMemo(() => {
+    const allStats = statsQuery.data ?? [];
+    let best: { label: string; value: number; display: string } | null = null;
+    for (const category of ["service", "reception", "attaque", "bloc", "defense", "physique"] as const) {
+      const pb = computePersonalBest(allStats.filter((s) => s.category === category));
+      if (!pb) continue;
+      if (!best || pb.value > best.value) {
+        const metricLabel = STAT_METRICS[category].find((m) => m.key === pb.metric)?.label ?? pb.metric;
+        best = { label: metricLabel, value: pb.value, display: `${pb.value}${pb.unit ?? ""}` };
       }
-      setRecord(best ? { label: best.label, value: best.display } : null);
-    } catch (e) {
-      setError(errorMessage(e, "Erreur de chargement du profil."));
-    } finally {
-      setLoading(false);
     }
-  }, [setProfile]);
+    return best ? { label: best.label, value: best.display } : null;
+  }, [statsQuery.data]);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  // Les fonctions `refetch` sont stables d'un rendu à l'autre, contrairement
+  // aux objets de requête : en dépendre évite la boucle de rechargement
+  // corrigée en phase 5.
+  const refetchProfile = profileQuery.refetch;
+  const refetchAchievements = achievementsQuery.refetch;
+  const refetchHistory = historyQuery.refetch;
+  const refetchStats = statsQuery.refetch;
+  const reload = useCallback(() => {
+    void refetchProfile();
+    void refetchAchievements();
+    void refetchHistory();
+    void refetchStats();
+  }, [refetchProfile, refetchAchievements, refetchHistory, refetchStats]);
+
+  // Même convention que les autres onglets : on relit au retour sur l'écran,
+  // en ne dépendant que des `refetch`. Ce qui a disparu, ce n'est pas le
+  // rafraîchissement, c'est l'écriture en base qui y était mêlée.
+  useFocusEffect(reload);
+
+  const loading =
+    profileQuery.isPending || achievementsQuery.isPending || historyQuery.isPending || statsQuery.isPending;
+  const refreshing =
+    profileQuery.isFetching || achievementsQuery.isFetching || historyQuery.isFetching || statsQuery.isFetching;
+  const failure = profileQuery.error ?? achievementsQuery.error ?? historyQuery.error ?? statsQuery.error;
+  const error = failure ? errorMessage(failure, "Erreur de chargement du profil.") : null;
 
   if (loading) return <LoadingView />;
-  if (error || !profile) return <ErrorView message={error ?? "Profil introuvable."} onRetry={load} />;
+  if (error || !profile) return <ErrorView message={error ?? "Profil introuvable."} onRetry={reload} />;
 
   const { level, progressInLevel, xpForNext } = xpToNextLevel(profile.xp);
   const levelPercent = (progressInLevel / xpForNext) * 100;
@@ -89,7 +95,7 @@ export default function ProfileScreen() {
   const mainObjective = profile.goals[0];
 
   return (
-    <ScreenContainer onRefresh={load} refreshing={loading}>
+    <ScreenContainer onRefresh={reload} refreshing={refreshing}>
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: theme.primaryMuted }]}>
           <Text style={[styles.avatarLabel, { color: theme.primary }]}>{profile.username.slice(0, 2).toUpperCase()}</Text>

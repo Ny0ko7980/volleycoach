@@ -11,6 +11,7 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
 import { useAuthStore } from "@/store/authStore";
 import { updateMyProfile, deleteMyAccount } from "@/services/profileService";
+import { invalidateProfile } from "@/hooks/queries";
 import {
   requestNotificationPermissions,
   scheduleDailyTrainingReminder,
@@ -71,6 +72,7 @@ export default function SettingsScreen() {
       }
 
       updateLocal({ notifications_enabled: value });
+      invalidateProfile();
     } catch (e) {
       Alert.alert(
         "Réglage non enregistré",

@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
 import { describeRecommendation, type SessionRecommendation } from "@/services/recommendationEngine";
-import { useRecommendedSession } from "@/hooks/queries";
+import { invalidateStartedSession, useRecommendedSession } from "@/hooks/queries";
 import { generateWorkoutFromRecommendation, startWorkoutSession } from "@/services/workoutService";
 import { skillIcon, skillLabel } from "@/constants/skills";
 import { spacing, typography, radius } from "@/constants/theme";
@@ -44,6 +44,7 @@ export default function RecommendedSessionScreen() {
     try {
       const workout = await generateWorkoutFromRecommendation(recommendation, profile);
       const session = await startWorkoutSession(workout.id);
+      invalidateStartedSession();
       router.replace(`/(tabs)/training/session/${session.id}`);
     } catch (e) {
       setStartError(errorMessage(e, "Impossible de générer la séance."));
