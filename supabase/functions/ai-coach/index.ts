@@ -180,26 +180,35 @@ Deno.serve(async (req: Request) => {
     // Pas de clé configurée : le moteur de règles est le mode normal, pas une
     // dégradation. Rien à signaler au joueur.
     reply = generateRuleBasedReply(message, ctx);
-  } else if (!(await aiQuotaAllows(supabase))) {
-    // Plafond atteint : le Coach IA répond quand même, avec le moteur de
-    // règles. La fonctionnalité reste disponible, seule la dépense est bornée.
-    reply = generateRuleBasedReply(message, ctx);
-    degraded = "quota_atteint";
   } else {
-    try {
-      reply = await callAnthropic(message, ctx, recentStats ?? [], recentSessions ?? []);
-      // Le quota n'est débité qu'ici, une fois la réponse réellement obtenue.
-      // Auparavant il l'était avant l'appel : un modèle injoignable coûtait au
-      // joueur une de ses trente questions du jour pour une réponse de repli
-      // qu'il n'avait pas demandée.
-      //
-      // Un échec du débit ne doit pas faire perdre la réponse déjà produite :
-      // on la rend, et le compteur sera juste à la question suivante.
-      await chargeAiQuota(supabase);
-    } catch (err) {
-      console.error("Anthropic call failed, falling back to rules engine:", err);
+    const quota = await readAiQuota(supabase);
+    if (!quota.allowed) {
+      // Le Coach IA répond quand même, avec le moteur de règles : la
+      // fonctionnalité reste disponible, seule la dépense est bornée. On
+      // distingue le plafond réellement atteint d'un compteur illisible —
+      // annoncer « tu as utilisé tes 30 questions » sur une panne de base
+      // serait faux et incompréhensible pour le joueur.
       reply = generateRuleBasedReply(message, ctx);
-      degraded = "ia_indisponible";
+      degraded = quota.reason === "quota_atteint" ? "quota_atteint" : "ia_indisponible";
+    } else {
+      let modelReply: string | null = null;
+      try {
+        modelReply = await callAnthropic(message, ctx, recentStats ?? [], recentSessions ?? []);
+      } catch (err) {
+        console.error("Anthropic call failed, falling back to rules engine:", err);
+      }
+
+      if (modelReply === null) {
+        reply = generateRuleBasedReply(message, ctx);
+        degraded = "ia_indisponible";
+      } else {
+        reply = modelReply;
+        // Débité seulement ici, une fois la réponse réellement obtenue, et
+        // HORS du try ci-dessus : un échec du débit ne doit pas faire jeter
+        // une réponse déjà produite ni la faire passer pour une panne. Le
+        // compteur sera juste à la question suivante.
+        await chargeAiQuota(supabase);
+      }
     }
   }
 
@@ -309,17 +318,22 @@ function buildUserContent(
 /**
  * Consulte le quota sans le débiter.
  *
- * En cas d'échec du RPC, on renvoie `false` : un compteur indisponible fait
- * retomber sur le moteur de règles plutôt que d'ouvrir la dépense en grand.
+ * En cas d'échec du RPC, on refuse l'appel au modèle — un compteur
+ * indisponible ne doit pas ouvrir la dépense en grand — mais on dit que la
+ * cause est technique, pas un plafond atteint. Les deux ne se racontent pas de
+ * la même façon au joueur.
  */
-async function aiQuotaAllows(client: SupabaseClient): Promise<boolean> {
+async function readAiQuota(
+  client: SupabaseClient
+): Promise<{ allowed: boolean; reason?: "quota_atteint" | "compteur_indisponible" }> {
   const { data, error } = await client.rpc("ai_quota_status");
   if (error) {
     console.error("ai_quota_status failed, falling back to rules engine:", error);
-    return false;
+    return { allowed: false, reason: "compteur_indisponible" };
   }
   const row = Array.isArray(data) ? data[0] : data;
-  return row?.allowed === true;
+  if (row?.allowed === true) return { allowed: true };
+  return { allowed: false, reason: "quota_atteint" };
 }
 
 /** Débite une unité, après une réponse réellement obtenue. */

@@ -69,6 +69,15 @@ export const queryClient = new QueryClient({
       gcTime: 5 * 60_000,
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
+      // Décisif, et contre-intuitif : avec le mode par défaut (« online »),
+      // brancher `onlineManager` sur NetInfo transforme « hors réseau » en
+      // requête EN PAUSE — statut « pending », jamais d'erreur. L'écran
+      // resterait sur son indicateur de chargement indéfiniment, et le repli
+      // sur le cache disque, qui se déclenche sur l'erreur, ne viendrait
+      // jamais. En « offlineFirst », la requête est tentée quand même :
+      // elle échoue proprement, l'erreur s'affiche, le cache prend le relais,
+      // et les nouvelles tentatives reprennent au retour du réseau.
+      networkMode: "offlineFirst",
       // Réessayer un refus de RLS ou une contrainte violée ne sert à rien et
       // retarde l'affichage de l'erreur. On réutilise la classification écrite
       // pour la file hors-ligne, seule source de vérité sur ce qui mérite une
@@ -81,6 +90,10 @@ export const queryClient = new QueryClient({
       // doivent l'être passent par la file hors-ligne, qui garantit l'ordre et
       // l'idempotence. Rejouer des deux côtés créerait des doublons.
       retry: false,
+      // Même raison que pour les lectures : sans cela, une écriture faite hors
+      // réseau resterait en attente sans rien dire, puis partirait toute seule
+      // plus tard. Le joueur doit voir l'échec au moment où il agit.
+      networkMode: "offlineFirst",
     },
   },
 });

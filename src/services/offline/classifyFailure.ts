@@ -41,6 +41,12 @@ export function classifySupabaseFailure(error: unknown): FailureKind {
   const code = codeOf(error);
   const message = messageOf(error).toLowerCase();
 
+  // Reconnu par son nom, pas par son texte : nos propres dépassements de délai
+  // portent un message en français, que la détection par mots-clés anglais
+  // ci-dessous manquait — ils étaient donc classés « définitifs » et jamais
+  // réessayés, exactement l'inverse de ce qu'il faut.
+  if (error instanceof Error && error.name === "TimeoutError") return "retryable";
+
   // Jeton expiré ou absent : une seule tentative de rafraîchissement, puis on
   // garde la file intacte jusqu'à la reconnexion.
   if (code === "PGRST301" || code === "401" || message.includes("jwt expired") || message.includes("invalid claim")) {

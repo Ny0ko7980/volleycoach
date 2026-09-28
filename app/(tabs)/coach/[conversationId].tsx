@@ -33,6 +33,10 @@ export default function ChatScreen() {
   // une liste vide parce que le chargement a échoué n'est pas une conversation
   // vide.
   const historyLoaded = useRef(false);
+  // `sending` est un état : sa valeur ne change qu'au rendu suivant. Deux
+  // appuis rapprochés le liraient tous les deux à `false`. La référence, elle,
+  // est à jour immédiatement.
+  const sendingRef = useRef(false);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -65,8 +69,16 @@ export default function ChatScreen() {
    * est déjà enregistrée côté serveur. Depuis la migration du quota, un échec
    * technique ne débite rien, donc réessayer est aussi gratuit pour le joueur.
    */
+  /** Entrée du bouton « Réessayer ». Pose le verrou, puis délègue. */
   async function askForReply(question: string) {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
     setSending(true);
+    await runReply(question);
+  }
+
+  /** Suppose le verrou déjà posé par l'appelant. */
+  async function runReply(question: string) {
     setError(null);
     setDegraded(undefined);
     try {
@@ -80,6 +92,7 @@ export default function ChatScreen() {
       setUnansweredQuestion(question);
       setError(errorMessage(e, "Le Coach IA n'a pas pu répondre. Réessaie."));
     } finally {
+      sendingRef.current = false;
       setSending(false);
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     }
@@ -87,9 +100,16 @@ export default function ChatScreen() {
 
   async function handleSend(overrideText?: string) {
     const text = (overrideText ?? input).trim();
-    if (!text || !conversationId || sending) return;
+    if (!text || !conversationId) return;
+    // Verrou posé AVANT le premier `await` : sans cela, le bouton d'envoi et
+    // celui de « Réessayer » restaient actifs pendant l'enregistrement, et deux
+    // appuis lançaient deux demandes au Coach IA — deux réponses, deux débits.
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
     setInput("");
     setError(null);
+    setUnansweredQuestion(null);
     setMessages((prev) => [
       ...prev,
       { id: `temp-${Date.now()}`, conversation_id: conversationId, role: "user", content: text, created_at: new Date().toISOString() },
@@ -97,10 +117,12 @@ export default function ChatScreen() {
     try {
       await recordCoachQuestion(conversationId, text);
     } catch (e) {
+      sendingRef.current = false;
+      setSending(false);
       setError(errorMessage(e, "Ta question n'a pas pu être envoyée. Réessaie."));
       return;
     }
-    await askForReply(text);
+    await runReply(text);
   }
 
   if (loading) return <LoadingView label="Chargement de la conversation..." />;
