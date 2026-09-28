@@ -16,9 +16,10 @@
     "engine:check": "tsx scripts/check-recommendation-engine.ts",
     "coach:check": "tsx scripts/check-ai-coach.ts",
     "rls:check": "tsx scripts/check-rls.ts",
-    "test": "npm run typecheck && npm run lint && npm run exercises:check && npm run engine:check && npm run coach:check && npm run offline:check",
+    "test": "npm run typecheck && npm run lint && npm run exercises:check && npm run engine:check && npm run coach:check && npm run offline:check && npm run session:check",
     "eas-build-pre-install": "node scripts/check-env.mjs",
-    "offline:check": "tsx scripts/check-offline-queue.ts"
+    "offline:check": "tsx scripts/check-offline-queue.ts",
+    "session:check": "tsx scripts/check-session-storage.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

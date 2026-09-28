@@ -1,6 +1,6 @@
 import "react-native-url-polyfill/auto";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
+import { sessionStorage } from "@/lib/session/secureSessionStorage";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -40,7 +40,10 @@ export const supabase = createClient(
   supabaseAnonKey ?? "cle-anon-absente",
   {
     auth: {
-      storage: AsyncStorage,
+      // Coffre du système plutôt qu'AsyncStorage : la session contient le
+      // jeton de rafraîchissement, qui est la vraie clé du compte. Voir
+      // `session/secureSessionStorage.ts` pour le découpage et les replis.
+      storage: sessionStorage,
       autoRefreshToken: isSupabaseConfigured,
       persistSession: true,
       detectSessionInUrl: false,
