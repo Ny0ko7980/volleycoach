@@ -18,6 +18,14 @@ site_url = "coachvolley://"
 additional_redirect_urls = ["coachvolley://auth/callback"]
 jwt_expiry = 3600
 enable_signup = true
+# Robustesse des mots de passe. Doit rester aligné sur src/constants/password.ts,
+# qui applique la même règle côté client : si le serveur était plus strict, le
+# joueur verrait un refus après avoir passé la validation locale.
+# Ces deux réglages valent pour le développement local ; en production ils se
+# règlent dans Authentication → Sign In / Providers → Email.
+minimum_password_length = 8
+password_requirements = "lower_upper_letters_digits"
+
 
 [auth.email]
 enable_confirmations = false

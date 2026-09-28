@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { spacing } from "@/constants/theme";
+import { PASSWORD_HINT, passwordProblem } from "@/constants/password";
 
 /**
  * Cible du lien de réinitialisation envoyé par `resetPasswordForEmail`
@@ -97,8 +98,9 @@ export default function ResetPasswordScreen() {
 
   async function handleUpdate() {
     setError(null);
-    if (password.length < 8) {
-      setError("Le mot de passe doit faire au moins 8 caractères.");
+    const weakness = passwordProblem(password);
+    if (weakness) {
+      setError(weakness);
       return;
     }
     if (password !== confirmation) {
@@ -164,7 +166,7 @@ export default function ResetPasswordScreen() {
         onChangeText={setPassword}
         secureTextEntry
         autoCapitalize="none"
-        placeholder="••••••••"
+        placeholder={PASSWORD_HINT}
       />
       <TextField
         label="Confirmation"

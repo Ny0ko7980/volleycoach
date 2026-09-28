@@ -8,6 +8,7 @@ import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { LEGAL_URLS, MINIMUM_AGE } from "@/constants/legal";
+import { PASSWORD_HINT, passwordProblem } from "@/constants/password";
 import { spacing } from "@/constants/theme";
 import { APP_NAME } from "@/constants/brand";
 
@@ -26,8 +27,9 @@ export default function RegisterScreen() {
       setError("Tous les champs sont obligatoires.");
       return;
     }
-    if (password.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères.");
+    const weakness = passwordProblem(password);
+    if (weakness) {
+      setError(weakness);
       return;
     }
     setLoading(true);
@@ -72,7 +74,7 @@ export default function RegisterScreen() {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
-        placeholder="Au moins 6 caractères"
+        placeholder={PASSWORD_HINT}
       />
       {error ? <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text> : null}
 
