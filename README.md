@@ -182,6 +182,9 @@ npm run exercises:check  # valide les 300 exercices de la bibliothèque
 npm run exercises:build  # régénère la migration 0009 depuis src/data/exercises
 npm run engine:check     # vérifie le comportement du moteur de recommandation
 npm run coach:check      # vérifie le routage des réponses du Coach IA
+npm run offline:check    # rejoue les 8 scénarios de la file d'attente hors-ligne
+                         # (perte réseau, réouverture de l'app, session expirée,
+                         #  double rejeu, réseau instable)
 npm run rls:check        # rejoue les migrations sur une base jetable et teste
                          # le cloisonnement réel entre deux joueurs
 npm run env:check        # vérifie la présence des variables EXPO_PUBLIC_*

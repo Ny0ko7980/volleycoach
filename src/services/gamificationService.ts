@@ -1,10 +1,10 @@
 import { supabase } from "@/lib/supabase";
 import type { Achievement, PlayerAchievement, PlayerProfile } from "@/types/database";
 
-// Doit rester synchronisé avec apply_session_rewards() côté serveur
-// (supabase/migrations/0005_security_hardening.sql), seule source de vérité
-// pour l'attribution réelle de l'XP — cette constante ne sert ici qu'à
-// afficher la progression côté client.
+// Doit rester synchronisé avec grant_session_rewards() côté serveur
+// (supabase/migrations/20260922203616_rewards_integrity_and_badges.sql),
+// seule source de vérité pour l'attribution réelle de l'XP — cette constante
+// ne sert ici qu'à afficher la progression côté client.
 const XP_PER_LEVEL = 200;
 
 export function xpToNextLevel(xp: number): { level: number; progressInLevel: number; xpForNext: number } {
@@ -14,13 +14,21 @@ export function xpToNextLevel(xp: number): { level: number; progressInLevel: num
 }
 
 /**
- * Met à jour XP, niveau, série (streak) et débloque les badges éligibles
- * après une séance complétée. Tout le calcul est effectué côté serveur par
- * la fonction Postgres `apply_session_rewards()` (SECURITY DEFINER,
- * supabase/migrations/0005_security_hardening.sql) : le client n'envoie
- * aucune valeur d'XP/streak/badge, il ne fait que déclencher le
- * recalcul — ce qui empêche un client malveillant de s'attribuer un score
- * ou un badge arbitraire.
+ * Relit le profil après une séance complétée, et dit quels badges viennent
+ * d'être débloqués.
+ *
+ * L'attribution elle-même ne dépend pas de cet appel. XP, niveau, série et
+ * badges sont accordés côté serveur par `grant_session_rewards()`, déclenchée
+ * par le trigger `trg_apply_rewards_after_session` au moment où la séance
+ * passe à « completed »
+ * (supabase/migrations/20260922203616_rewards_integrity_and_badges.sql). La
+ * colonne `workout_sessions.rewarded_at` garantit qu'une même séance ne
+ * rapporte qu'une fois, même si elle est enregistrée deux fois — ce qui rend
+ * la fin de séance rejouable depuis la file d'attente hors-ligne.
+ *
+ * Le client n'envoie donc aucune valeur d'XP, de série ou de badge : il ne
+ * peut pas s'attribuer un score arbitraire. `apply_session_rewards()` ne fait
+ * plus que renvoyer le profil à jour.
  */
 export async function applySessionRewards(profile: PlayerProfile): Promise<{
   profile: PlayerProfile;
