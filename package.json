@@ -17,7 +17,8 @@
     "coach:check": "tsx scripts/check-ai-coach.ts",
     "rls:check": "tsx scripts/check-rls.ts",
     "test": "jest",
-    "eas-build-pre-install": "node scripts/check-env.mjs"
+    "eas-build-pre-install": "node scripts/check-env.mjs",
+    "offline:check": "tsx scripts/check-offline-queue.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
