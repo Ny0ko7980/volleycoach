@@ -41,22 +41,30 @@ export default function ExerciseFormScreen() {
 
   useEffect(() => {
     if (!id) return;
-    fetchExerciseById(id).then((ex) => {
-      if (!ex) return;
-      setName(ex.name);
-      setDescription(ex.description);
-      setInstructions(ex.instructions);
-      setCommonMistakes(ex.common_mistakes ?? "");
-      setTips(ex.tips ?? "");
-      setMediaUrl(ex.media_url ?? "");
-      setDurationMinutes(String(ex.duration_minutes));
-      setEquipment(ex.equipment.join(", "));
-      setPositions(ex.positions);
-      setLevel(ex.level);
-      setObjective(ex.objective);
-      setDifficulty(ex.difficulty);
-      setLoading(false);
-    });
+    fetchExerciseById(id)
+      .then((ex) => {
+        if (!ex) {
+          setError("Cet exercice n'existe pas ou n'est plus accessible.");
+          return;
+        }
+        setName(ex.name);
+        setDescription(ex.description);
+        setInstructions(ex.instructions);
+        setCommonMistakes(ex.common_mistakes ?? "");
+        setTips(ex.tips ?? "");
+        setMediaUrl(ex.media_url ?? "");
+        setDurationMinutes(String(ex.duration_minutes));
+        setEquipment(ex.equipment.join(", "));
+        setPositions(ex.positions);
+        setLevel(ex.level);
+        setObjective(ex.objective);
+        setDifficulty(ex.difficulty);
+      })
+      .catch((e: unknown) => setError(errorMessage(e, "Cet exercice n'a pas pu être chargé.")))
+      // `setLoading(false)` était à l'intérieur du `then`, après un `return`
+      // précoce : un échec ou un exercice absent laissait un écran bloqué sur
+      // le chargement, définitivement.
+      .finally(() => setLoading(false));
   }, [id]);
 
   function togglePosition(p: Position) {

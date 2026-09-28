@@ -42,8 +42,17 @@ export default function SettingsScreen() {
       } else {
         await cancelAllNotifications();
       }
-      updateLocal({ notifications_enabled: value });
+      // L'état local n'est appliqué qu'après l'enregistrement serveur :
+      // l'inverse laissait l'interrupteur visuellement activé alors que le
+      // profil n'avait pas été mis à jour, et le réglage revenait en arrière
+      // au prochain chargement sans explication.
       await updateMyProfile({ notifications_enabled: value });
+      updateLocal({ notifications_enabled: value });
+    } catch (e) {
+      Alert.alert(
+        "Réglage non enregistré",
+        errorMessage(e, "Ta préférence de notifications n'a pas pu être enregistrée. Réessaie.")
+      );
     } finally {
       setBusy(false);
     }

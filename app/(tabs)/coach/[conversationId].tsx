@@ -23,16 +23,27 @@ export default function ChatScreen() {
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
   const prefillSent = useRef(false);
+  // Le préremplissage ne doit partir que si l'historique a réellement été lu :
+  // une liste vide parce que le chargement a échoué n'est pas une conversation
+  // vide.
+  const historyLoaded = useRef(false);
 
   useEffect(() => {
     if (!conversationId) return;
     fetchMessages(conversationId)
-      .then(setMessages)
+      .then((loaded) => {
+        setMessages(loaded);
+        historyLoaded.current = true;
+      })
+      // Sans ce catch, un historique non chargé donnait une conversation
+      // affichée vide sans le dire, et le préremplissage ci-dessous partait
+      // une seconde fois — message dupliqué et appel au Coach IA facturé.
+      .catch((e: unknown) => setError(errorMessage(e, "L'historique de la conversation n'a pas pu être chargé.")))
       .finally(() => setLoading(false));
   }, [conversationId]);
 
   useEffect(() => {
-    if (!loading && prefill && !prefillSent.current && messages.length === 0) {
+    if (!loading && historyLoaded.current && prefill && !prefillSent.current && messages.length === 0) {
       prefillSent.current = true;
       handleSend(prefill);
     }

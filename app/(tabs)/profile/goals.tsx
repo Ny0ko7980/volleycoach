@@ -8,6 +8,7 @@ import { TextField } from "@/components/ui/TextField";
 import { Chip } from "@/components/ui/Chip";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { fetchGoals, createGoal, deleteGoal } from "@/services/goalsService";
 import { OBJECTIVES } from "@/constants/positions";
@@ -19,12 +20,17 @@ export default function GoalsScreen() {
   const { theme } = useAppTheme();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
   function load() {
     setLoading(true);
+    setLoadError(null);
     fetchGoals()
       .then(setGoals)
+      // Sans ce catch, un échec réseau affichait « aucun objectif » : le
+      // joueur pouvait croire que ses objectifs avaient été perdus.
+      .catch((e: unknown) => setLoadError(errorMessage(e, "Tes objectifs n'ont pas pu être chargés.")))
       .finally(() => setLoading(false));
   }
 
@@ -49,6 +55,9 @@ export default function GoalsScreen() {
   }
 
   if (loading) return <LoadingView />;
+  // Un échec de chargement doit se voir : sinon « aucun objectif » et « je
+  // n'ai pas réussi à les lire » se ressemblent trop.
+  if (loadError) return <ErrorView message={loadError} onRetry={load} />;
 
   const active = goals.filter((g) => g.status === "active");
   const achieved = goals.filter((g) => g.status === "achieved");
