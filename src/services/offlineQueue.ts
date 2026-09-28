@@ -10,6 +10,12 @@ import {
 } from "@/services/offline/queueEngine";
 import { completeWorkoutSession, type CompleteSessionInput } from "@/services/workoutService";
 import { saveExerciseFeedback, type SaveExerciseFeedbackInput } from "@/services/feedbackService";
+import { updateGoalProgress } from "@/services/goalsService";
+import {
+  goalProgressDedupeKey,
+  isGoalProgressPayload,
+  type UpdateGoalProgressInput,
+} from "@/services/goals/goalRules";
 
 // Clés inchangées depuis la première version : les renommer orphelinerait les
 // mutations déjà en attente sur les téléphones où l'app est installée.
@@ -40,6 +46,7 @@ const QUARANTINE_KEY = "coach-volley:offline-queue-quarantine";
 export const OfflineOperation = {
   completeWorkoutSession: "workout_session.complete",
   saveExerciseFeedback: "exercise_feedback.save",
+  updateGoalProgress: "goal.update_progress",
   /** Mutations issues de l'ancien format { table, payload }. */
   legacyUpsert: "legacy.upsert",
 } as const;
@@ -86,6 +93,12 @@ const engine = new OfflineQueueEngine({
     [OfflineOperation.saveExerciseFeedback]: async (payload) => {
       if (!isFeedbackPayload(payload)) throw new Error("Charge invalide pour un ressenti d'exercice.");
       await saveExerciseFeedback(payload);
+    },
+    [OfflineOperation.updateGoalProgress]: async (payload) => {
+      if (!isGoalProgressPayload(payload)) throw new Error("Charge invalide pour une progression d'objectif.");
+      // `update ... eq(id)` avec la cible portée par la charge : rejouable
+      // autant de fois que nécessaire, le résultat est le même.
+      await updateGoalProgress(payload);
     },
     [OfflineOperation.legacyUpsert]: async (payload) => {
       const record = (payload ?? {}) as { table?: unknown; row?: unknown };
@@ -177,6 +190,19 @@ export function queueExerciseFeedback(input: SaveExerciseFeedbackInput): Promise
     // Le joueur peut changer d'avis pendant la séance : seule la dernière
     // valeur compte, exactement comme l'upsert en ligne.
     dedupeKey: `${OfflineOperation.saveExerciseFeedback}:${input.sessionId}:${input.exerciseId}`,
+  });
+}
+
+/**
+ * Met en file la progression d'un objectif qui n'a pas pu être enregistrée.
+ *
+ * Dédoublonnée par objectif : si le joueur corrige sa valeur trois fois sans
+ * réseau, seule la dernière part. C'est la sémantique voulue — la progression
+ * est un état, pas un journal d'événements.
+ */
+export function queueGoalProgress(input: UpdateGoalProgressInput): Promise<void> {
+  return engine.enqueue(OfflineOperation.updateGoalProgress, input, {
+    dedupeKey: goalProgressDedupeKey(OfflineOperation.updateGoalProgress, input.goalId),
   });
 }
 

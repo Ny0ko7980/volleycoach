@@ -25,8 +25,23 @@ export const queryKeys = {
   },
   sessions: {
     root: ["sessions"] as const,
-    today: () => ["sessions", "today"] as const,
+    // La journée fait partie de la clé : une application laissée ouverte la
+    // nuit doit repartir sur une journée neuve, pas ressortir le cache de la
+    // veille.
+    today: (day: string) => ["sessions", "today", day] as const,
     history: (limit: number) => ["sessions", "history", limit] as const,
+  },
+  workouts: {
+    root: ["workouts"] as const,
+    // La proposition du jour : sous la racine « séances » elle serait
+    // invalidée par toute fin de séance, alors qu'elle ne change qu'une fois
+    // par jour.
+    todayProposal: (day: string) => ["workouts", "todayProposal", day] as const,
+  },
+  achievements: {
+    root: ["achievements"] as const,
+    catalog: () => ["achievements", "catalog"] as const,
+    mine: () => ["achievements", "mine"] as const,
   },
   statistics: {
     root: ["statistics"] as const,

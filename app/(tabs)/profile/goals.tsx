@@ -10,8 +10,7 @@ import { LoadingView } from "@/components/ui/LoadingView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { createGoal } from "@/services/goalsService";
-import { useDeleteGoal, useGoals } from "@/hooks/queries";
+import { useCreateGoal, useDeleteGoal, useGoals, useUpdateGoalProgress } from "@/hooks/queries";
 import { OBJECTIVES } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { Goal, Objective } from "@/types/database";
@@ -20,6 +19,7 @@ import { errorMessage } from "@/utils/errors";
 export default function GoalsScreen() {
   const { theme } = useAppTheme();
   const [modalVisible, setModalVisible] = useState(false);
+  const [editedGoal, setEditedGoal] = useState<Goal | null>(null);
   const { data, isPending, isError, error, refetch, isFetching } = useGoals();
   const deleteGoalMutation = useDeleteGoal();
   const goals = data ?? [];
@@ -70,62 +70,154 @@ export default function GoalsScreen() {
         <>
           <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>En cours ({active.length})</Text>
           {active.map((g) => (
-            <GoalCard key={g.id} goal={g} onDelete={handleDelete} />
+            <GoalCard key={g.id} goal={g} onDelete={handleDelete} onUpdateProgress={setEditedGoal} />
           ))}
 
           {achieved.length > 0 ? (
             <>
               <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>Atteints ({achieved.length})</Text>
               {achieved.map((g) => (
-                <GoalCard key={g.id} goal={g} onDelete={handleDelete} />
+                <GoalCard key={g.id} goal={g} onDelete={handleDelete} onUpdateProgress={setEditedGoal} />
               ))}
             </>
           ) : null}
         </>
       )}
 
-      <NewGoalModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onCreated={() => {
-          void refetch();
-          setModalVisible(false);
-        }}
-      />
+      <UpdateProgressModal goal={editedGoal} onClose={() => setEditedGoal(null)} />
+
+      <NewGoalModal visible={modalVisible} onClose={() => setModalVisible(false)} />
     </ScreenContainer>
   );
 }
 
-function NewGoalModal({ visible, onClose, onCreated }: { visible: boolean; onClose: () => void; onCreated: () => void }) {
+/**
+ * Saisie de la valeur actuelle d'un objectif.
+ *
+ * Une vraie fenêtre et non `Alert.prompt` : ce dernier n'existe que sur iOS,
+ * la saisie serait donc simplement absente sur Android.
+ *
+ * L'objectif est passé en entier plutôt que par identifiant : la cible doit
+ * accompagner la valeur jusqu'à l'écriture pour que le statut soit décidé sans
+ * relire la ligne, y compris au rejeu hors-ligne.
+ */
+function UpdateProgressModal({ goal, onClose }: { goal: Goal | null; onClose: () => void }) {
   const { theme } = useAppTheme();
+  const updateProgress = useUpdateGoalProgress();
+  const currentValue = goal?.current_value ?? 0;
+
+  /**
+   * La saisie repart de la valeur enregistrée à chaque objectif ouvert.
+   *
+   * L'état retient l'objectif auquel il se rapporte : dès qu'on en ouvre un
+   * autre, la saisie précédente ne lui correspond plus et la valeur affichée
+   * redevient celle de la base. Ni effet de resynchronisation, ni remontage du
+   * composant — qui ferait disparaître la fenêtre sans son animation.
+   */
+  const [draft, setDraft] = useState<{ goalId: string; value: string } | null>(null);
+  const value = goal && draft?.goalId === goal.id ? draft.value : String(currentValue);
+  const setValue = (next: string) => goal && setDraft({ goalId: goal.id, value: next });
+
+  // Le message d'erreur porte lui aussi l'objectif concerné : sans cela, celui
+  // d'un objectif précédent s'afficherait sous la saisie du suivant.
+  const [failure, setFailure] = useState<{ goalId: string; message: string } | null>(null);
+  const error = goal && failure?.goalId === goal.id ? failure.message : null;
+  const setError = (message: string | null) =>
+    setFailure(message !== null && goal ? { goalId: goal.id, message } : null);
+
+  function handleSave() {
+    if (!goal) return;
+    const parsed = Number(value.replace(",", "."));
+    if (value.trim() === "" || !Number.isFinite(parsed)) {
+      setError("Renseigne une valeur numérique valide.");
+      return;
+    }
+    setError(null);
+    updateProgress.mutate(
+      {
+        goalId: goal.id,
+        currentValue: parsed,
+        targetValue: goal.target_value,
+        goalName: goal.name,
+        previousStatus: goal.status,
+      },
+      {
+        onSuccess: (result) => {
+          setDraft(null);
+          setFailure(null);
+          onClose();
+          if (result.queued) {
+            Alert.alert("Enregistré hors ligne", "Ta progression sera synchronisée dès le retour du réseau.");
+          }
+        },
+        onError: (e) => setError(errorMessage(e, "Impossible d'enregistrer cette progression.")),
+      },
+    );
+  }
+
+  return (
+    <Modal visible={goal !== null} animationType="slide" transparent onRequestClose={onClose}>
+      <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Ma progression</Text>
+            {goal ? (
+              <Text style={{ color: theme.textMuted, fontSize: 13, marginBottom: spacing.md }}>
+                {goal.name} · cible {goal.target_value}
+                {goal.unit ?? ""} (actuellement {currentValue}
+                {goal.unit ?? ""})
+              </Text>
+            ) : null}
+            <TextField
+              label={`Valeur actuelle${goal?.unit ? ` (${goal.unit})` : ""}`}
+              value={value}
+              onChangeText={setValue}
+              keyboardType="decimal-pad"
+              autoFocus
+            />
+            {error ? <Text style={{ color: theme.danger, marginBottom: spacing.md }}>{error}</Text> : null}
+            <Button label="Enregistrer" onPress={handleSave} loading={updateProgress.isPending} />
+            <Button label="Annuler" variant="ghost" onPress={onClose} />
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+function NewGoalModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { theme } = useAppTheme();
+  const createGoalMutation = useCreateGoal();
   const [category, setCategory] = useState<Objective>("detente");
   const [current, setCurrent] = useState("");
   const [target, setTarget] = useState("");
   const [unit, setUnit] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  async function handleCreate() {
+  function handleCreate() {
     const currentValue = Number(current.replace(",", "."));
     const targetValue = Number(target.replace(",", "."));
-    if (Number.isNaN(currentValue) || Number.isNaN(targetValue)) {
+    if (!Number.isFinite(currentValue) || !Number.isFinite(targetValue)) {
       setError("Renseigne des valeurs numériques valides.");
       return;
     }
     setError(null);
-    setLoading(true);
-    try {
-      const goalDef = OBJECTIVES.find((o) => o.value === category)!;
-      await createGoal({ name: goalDef.label.replace("Améliorer ", ""), category, currentValue, targetValue, unit });
-      onCreated();
-      setCurrent("");
-      setTarget("");
-      setUnit("");
-    } catch (e) {
-      setError(errorMessage(e, "Impossible de créer l'objectif."));
-    } finally {
-      setLoading(false);
-    }
+    const goalDef = OBJECTIVES.find((o) => o.value === category)!;
+    // La mutation invalide la racine « objectifs » : la liste et l'objectif
+    // principal de l'accueil se remettent à jour seuls, il n'y a plus de
+    // rechargement à demander depuis l'écran.
+    createGoalMutation.mutate(
+      { name: goalDef.label.replace("Améliorer ", ""), category, currentValue, targetValue, unit },
+      {
+        onSuccess: () => {
+          setCurrent("");
+          setTarget("");
+          setUnit("");
+          onClose();
+        },
+        onError: (e) => setError(errorMessage(e, "Impossible de créer l'objectif.")),
+      }
+    );
   }
 
   return (
@@ -146,7 +238,7 @@ function NewGoalModal({ visible, onClose, onCreated }: { visible: boolean; onClo
             <TextField label="Valeur cible" value={target} onChangeText={setTarget} keyboardType="decimal-pad" />
             <TextField label="Unité (cm, %, ...)" value={unit} onChangeText={setUnit} />
             {error ? <Text style={{ color: theme.danger, marginBottom: spacing.md }}>{error}</Text> : null}
-            <Button label="Créer l'objectif" onPress={handleCreate} loading={loading} />
+            <Button label="Créer l'objectif" onPress={handleCreate} loading={createGoalMutation.isPending} />
             <Button label="Annuler" variant="ghost" onPress={onClose} />
           </ScrollView>
         </View>

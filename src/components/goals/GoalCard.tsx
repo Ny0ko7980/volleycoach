@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { Trash2 } from "lucide-react-native";
+import { Pencil, Trash2 } from "lucide-react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -9,7 +9,17 @@ import { spacing } from "@/constants/theme";
 import type { Goal } from "@/types/database";
 import { goalProgressPercent } from "@/services/goalsService";
 
-export function GoalCard({ goal, onDelete }: { goal: Goal; onDelete?: (goal: Goal) => void }) {
+interface Props {
+  goal: Goal;
+  onDelete?: (goal: Goal) => void;
+  /**
+   * Ouvre la saisie de la valeur actuelle. Optionnel : la carte est aussi
+   * utilisée en lecture seule (accueil), où l'objectif n'est qu'un rappel.
+   */
+  onUpdateProgress?: (goal: Goal) => void;
+}
+
+export function GoalCard({ goal, onDelete, onUpdateProgress }: Props) {
   const { theme } = useAppTheme();
   const percent = goalProgressPercent(goal);
 
@@ -19,6 +29,14 @@ export function GoalCard({ goal, onDelete }: { goal: Goal; onDelete?: (goal: Goa
         <Text style={[styles.name, { color: theme.text }]}>{goal.name}</Text>
         <View style={styles.headerActions}>
           {goal.status === "achieved" ? <Badge label="Atteint ✅" tone="success" /> : <Badge label={`${percent}%`} tone="primary" />}
+          {onUpdateProgress ? (
+            <IconButton
+              icon={<Pencil size={16} color={theme.primary} />}
+              onPress={() => onUpdateProgress(goal)}
+              accessibilityLabel={`Mettre à jour ma progression sur ${goal.name}`}
+              size={32}
+            />
+          ) : null}
           {onDelete ? (
             <IconButton
               icon={<Trash2 size={16} color={theme.danger} />}

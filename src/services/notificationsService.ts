@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { APP_NAME } from "@/constants/brand";
+import { useProfileStore } from "@/store/profileStore";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -10,6 +11,21 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+/**
+ * Le joueur a-t-il laissé les notifications activées ?
+ *
+ * Les rappels programmés sont annulés quand il désactive l'interrupteur, mais
+ * les notifications ponctuelles — badge débloqué, objectif atteint — partaient
+ * quand même : elles ne sont pas programmées à l'avance, donc rien ne les
+ * annulait. Un joueur qui avait tout coupé en recevait encore.
+ *
+ * Lu depuis le store plutôt que passé en paramètre : sinon chaque appelant
+ * doit y penser, et il suffit d'en oublier un pour recréer le trou.
+ */
+function notificationsAllowed(): boolean {
+  return useProfileStore.getState().profile?.notifications_enabled !== false;
+}
 
 export async function requestNotificationPermissions(): Promise<boolean> {
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -46,7 +62,7 @@ export async function scheduleDailyTrainingReminder(hour = 18, minute = 0) {
 }
 
 export async function scheduleStreakReminder(streakCount: number) {
-  if (streakCount <= 0) return;
+  if (streakCount <= 0 || !notificationsAllowed()) return;
   await Notifications.scheduleNotificationAsync({
     content: {
       title: `🔥 Série de ${streakCount} jours !`,
@@ -57,6 +73,7 @@ export async function scheduleStreakReminder(streakCount: number) {
 }
 
 export async function notifyGoalProgress(goalName: string, percent: number) {
+  if (!notificationsAllowed()) return;
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "Progression d'objectif 🎯",
@@ -67,6 +84,7 @@ export async function notifyGoalProgress(goalName: string, percent: number) {
 }
 
 export async function notifyAchievementUnlocked(name: string, icon: string) {
+  if (!notificationsAllowed()) return;
   await Notifications.scheduleNotificationAsync({
     content: {
       title: `${icon} Nouveau badge débloqué !`,
