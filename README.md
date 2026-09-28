@@ -125,7 +125,34 @@ en développement — réactive-la en production (`enable_confirmations = true`)
 Un trigger (`handle_new_user`) crée automatiquement une ligne
 `player_profiles` à l'inscription.
 
+#### Robustesse des mots de passe — à régler à la main
+
+Ces réglages ne sont pas pilotables depuis le dépôt : `supabase/config.toml`
+ne vaut que pour le développement local. En production, il faut les appliquer
+dans le tableau de bord, et ils doivent être **identiques** à
+`src/constants/password.ts` — un serveur plus strict que le client afficherait
+un refus après une validation locale réussie.
+
+Tableau de bord → **Authentication** → **Sign In / Providers** → **Email** :
+
+| Réglage | Valeur à appliquer |
+|---|---|
+| Minimum password length | `8` |
+| Password Requirements | `Lowercase, uppercase letters and digits` |
+| Prevent use of leaked passwords | **indisponible** — réservé au plan Pro |
+
+La protection contre les mots de passe compromis (HaveIBeenPwned) apparaît
+dans l'analyseur de sécurité Supabase comme un avertissement permanent tant
+que le projet est sur le plan gratuit. Ce n'est pas un réglage oublié : il
+faut passer au plan Pro pour pouvoir l'activer.
+
 ### Edge Function — Coach IA
+
+Le déploiement se fait avec la CLI, qui envoie les fichiers depuis le disque.
+C'est important : la fonction est faite de `index.ts` et de `rulesEngine.ts`
+(1 276 lignes), et un déploiement remplace l'ensemble — il n'y a pas de
+déploiement partiel. Passer ces fichiers autrement qu'en les lisant sur le
+disque fait courir le risque d'en altérer un silencieusement.
 
 ```bash
 supabase functions deploy ai-coach --use-api

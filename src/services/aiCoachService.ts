@@ -48,47 +48,72 @@ export async function fetchMessages(conversationId: string): Promise<AiMessage[]
  * serveur pour construire une réponse pertinente et sûre (voir
  * supabase/functions/ai-coach).
  */
-export async function sendMessageToCoach(conversationId: string, content: string): Promise<AiMessage> {
-  const { error: insertUserError } = await supabase
+/** Ce que le serveur dit d'une réponse qui ne vient pas du modèle. */
+export type CoachDegradation = "ia_indisponible" | "quota_atteint";
+
+export interface CoachReplyResult {
+  message: AiMessage;
+  /** Absent quand la réponse est normale. */
+  degraded?: CoachDegradation;
+}
+
+/**
+ * Enregistre la question du joueur.
+ *
+ * Séparée de la demande de réponse pour que réessayer ne réenregistre pas la
+ * question : une seule question posée doit rester une seule ligne dans la
+ * conversation, même après trois tentatives.
+ */
+export async function recordCoachQuestion(conversationId: string, content: string): Promise<void> {
+  const { error } = await supabase
     .from("ai_messages")
     .insert({ conversation_id: conversationId, role: "user", content });
-  if (insertUserError) throw insertUserError;
+  if (error) throw error;
+}
 
+/**
+ * Demande une réponse au Coach IA et l'enregistre.
+ *
+ * La question doit déjà avoir été enregistrée par `recordCoachQuestion`. Cette
+ * fonction est donc rejouable telle quelle : c'est ce qui permet à l'écran de
+ * proposer « Réessayer » sur une question restée sans réponse, sans la poser
+ * une seconde fois.
+ *
+ * Le quota n'est plus en jeu ici : depuis la migration
+ * 20260928141928, le serveur ne débite une unité qu'après avoir réellement
+ * obtenu une réponse du modèle. Un échec technique ne coûte donc rien au
+ * joueur, et réessayer est sans conséquence sur son plafond quotidien.
+ */
+export async function requestCoachReply(conversationId: string, question: string): Promise<CoachReplyResult> {
   // Le Coach IA est l'appel le plus long de l'application : il peut traverser
   // un modèle de langage. Sans borne, un réseau qui pend laisse le joueur sur
-  // un indicateur de chargement sans issue.
-  //
-  // Limite connue, à traiter séparément : le message du joueur est déjà
-  // enregistré au-dessus, et la fonction distante a peut-être déjà débité une
-  // unité de quota. Un dépassement de délai laisse donc une question sans
-  // réponse dans la conversation, et un nouvel essai en crée une seconde. La
-  // borne ci-dessous rend la main à l'interface, elle ne rend pas l'appel
-  // rejouable.
+  // un indicateur de chargement sans issue. Le serveur abandonne de son côté
+  // au bout de 20 s ; on lui laisse une marge avant de rendre la main.
   const { data, error } = await withTimeout(
     supabase.functions.invoke<{
       reply: string;
       suggestedSkill?: TrainingSkill;
       suggestedLabel?: string;
+      degraded?: CoachDegradation;
     }>("ai-coach", {
-      body: { conversationId, message: content },
+      body: { conversationId, message: question },
     }),
     COACH_TIMEOUT_MS,
     "Le Coach IA met trop de temps à répondre. Vérifie ta connexion et réessaie."
   );
   if (error) throw error;
-
-  const reply = data?.reply ?? "Désolé, je n'ai pas pu générer de réponse pour le moment.";
+  if (!data?.reply) throw new Error("Le Coach IA n'a pas renvoyé de réponse.");
 
   const { data: assistantMessage, error: insertAssistantError } = await supabase
     .from("ai_messages")
     .insert({
       conversation_id: conversationId,
       role: "assistant",
-      content: reply,
+      content: data.reply,
       // Conservée avec le message pour que la proposition de séance survive à
       // la réouverture de la conversation.
-      suggested_skill: data?.suggestedSkill ?? null,
-      suggested_label: data?.suggestedLabel ?? null,
+      suggested_skill: data.suggestedSkill ?? null,
+      suggested_label: data.suggestedLabel ?? null,
     })
     .select("*")
     .single();
@@ -103,5 +128,16 @@ export async function sendMessageToCoach(conversationId: string, content: string
     .eq("id", conversationId);
   if (touchError) console.warn("Date de conversation non mise à jour :", touchError);
 
-  return assistantMessage as AiMessage;
+  return { message: assistantMessage as AiMessage, degraded: data.degraded };
+}
+
+/**
+ * Pose une question et attend la réponse.
+ *
+ * Conservée : c'est le chemin nominal, et le découpage ci-dessus n'a d'intérêt
+ * que pour l'écran qui veut pouvoir réessayer.
+ */
+export async function sendMessageToCoach(conversationId: string, content: string): Promise<CoachReplyResult> {
+  await recordCoachQuestion(conversationId, content);
+  return requestCoachReply(conversationId, content);
 }

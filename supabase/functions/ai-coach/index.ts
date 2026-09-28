@@ -39,6 +39,12 @@ const MAX_MESSAGE_LENGTH = 2_000;
 // serait entièrement mis en mémoire avant même d'être tronqué.
 const MAX_BODY_BYTES = 32 * 1024;
 
+// Au-delà, on abandonne l'appel au modèle et on répond avec le moteur de
+// règles. Sans cette borne, un fournisseur lent tient la fonction jusqu'au
+// délai de la plateforme : le joueur attend sur un écran figé, et la requête
+// finit par échouer sans qu'il sache pourquoi.
+const ANTHROPIC_TIMEOUT_MS = 20_000;
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
@@ -108,6 +114,11 @@ Deno.serve(async (req: Request) => {
   let reply: string;
   let suggestedSkill: string | undefined;
   let suggestedLabel: string | undefined;
+  // Dit au client pourquoi la réponse ne vient pas du modèle, quand c'est le
+  // cas. Sans cela, une panne était indiscernable d'une réponse normale : le
+  // joueur recevait un texte de repli sans savoir que sa question n'avait pas
+  // été traitée.
+  let degraded: "ia_indisponible" | "quota_atteint" | undefined;
 
   // Trois familles de questions reçoivent une réponse adossée au contenu réel
   // de la bibliothèque, exacte et disponible même sans clé Anthropic :
@@ -165,23 +176,34 @@ Deno.serve(async (req: Request) => {
     suggestedLabel = structured.suggestedLabel;
   } else if (techniqueReply) {
     reply = techniqueReply;
-  } else if (ANTHROPIC_API_KEY && (await consumeAiQuota(supabase))) {
-    // Le quota n'est débité qu'ici : les réponses ci-dessus sortent du moteur
-    // de règles, elles ne coûtent rien et n'ont donc pas à être plafonnées.
+  } else if (!ANTHROPIC_API_KEY) {
+    // Pas de clé configurée : le moteur de règles est le mode normal, pas une
+    // dégradation. Rien à signaler au joueur.
+    reply = generateRuleBasedReply(message, ctx);
+  } else if (!(await aiQuotaAllows(supabase))) {
+    // Plafond atteint : le Coach IA répond quand même, avec le moteur de
+    // règles. La fonctionnalité reste disponible, seule la dépense est bornée.
+    reply = generateRuleBasedReply(message, ctx);
+    degraded = "quota_atteint";
+  } else {
     try {
       reply = await callAnthropic(message, ctx, recentStats ?? [], recentSessions ?? []);
+      // Le quota n'est débité qu'ici, une fois la réponse réellement obtenue.
+      // Auparavant il l'était avant l'appel : un modèle injoignable coûtait au
+      // joueur une de ses trente questions du jour pour une réponse de repli
+      // qu'il n'avait pas demandée.
+      //
+      // Un échec du débit ne doit pas faire perdre la réponse déjà produite :
+      // on la rend, et le compteur sera juste à la question suivante.
+      await chargeAiQuota(supabase);
     } catch (err) {
       console.error("Anthropic call failed, falling back to rules engine:", err);
       reply = generateRuleBasedReply(message, ctx);
+      degraded = "ia_indisponible";
     }
-  } else {
-    // Plafond atteint (ou pas de clé) : le Coach IA répond quand même, avec le
-    // moteur de règles. La fonctionnalité reste disponible, seule la dépense
-    // est bornée.
-    reply = generateRuleBasedReply(message, ctx);
   }
 
-  return jsonResponse({ reply, suggestedSkill, suggestedLabel });
+  return jsonResponse({ reply, suggestedSkill, suggestedLabel, degraded });
 });
 
 // Le prompt système ne contient QUE des instructions, et aucune donnée.
@@ -269,25 +291,41 @@ function buildUserContent(
 }
 
 /**
- * Débite une unité du plafond quotidien d'appels au modèle de langage.
+ * Plafond quotidien d'appels au modèle de langage.
  *
- * Le plafond lui-même vit dans `consume_ai_quota()` (migration 0014), pas ici :
- * la fonction SQL ne prend aucun paramètre, donc ni ce code ni un client qui
- * appellerait le RPC directement ne peuvent le relever. L'incrément et le test
- * y sont atomiques, deux requêtes simultanées ne peuvent pas passer toutes les
- * deux au-dessus de la limite.
+ * La consultation et le débit sont séparés : on regarde d'abord s'il reste du
+ * quota, on appelle le modèle, et on ne débite qu'après avoir obtenu une
+ * réponse. Un appel qui échoue ne coûte donc plus rien au joueur.
+ *
+ * Le plafond lui-même vit en SQL (`private.ai_daily_quota()`), pas ici : les
+ * deux fonctions RPC ne prennent aucun paramètre, donc ni ce code ni un client
+ * qui les appellerait directement ne peuvent le relever.
+ *
+ * Contrepartie assumée : deux appels simultanés peuvent passer le test tous
+ * les deux et dépasser le plafond d'une unité. Le plafond borne une dépense,
+ * il n'a pas à être exact à l'unité près.
+ */
+
+/**
+ * Consulte le quota sans le débiter.
  *
  * En cas d'échec du RPC, on renvoie `false` : un compteur indisponible fait
  * retomber sur le moteur de règles plutôt que d'ouvrir la dépense en grand.
  */
-async function consumeAiQuota(client: SupabaseClient): Promise<boolean> {
-  const { data, error } = await client.rpc("consume_ai_quota");
+async function aiQuotaAllows(client: SupabaseClient): Promise<boolean> {
+  const { data, error } = await client.rpc("ai_quota_status");
   if (error) {
-    console.error("consume_ai_quota failed, falling back to rules engine:", error);
+    console.error("ai_quota_status failed, falling back to rules engine:", error);
     return false;
   }
   const row = Array.isArray(data) ? data[0] : data;
   return row?.allowed === true;
+}
+
+/** Débite une unité, après une réponse réellement obtenue. */
+async function chargeAiQuota(client: SupabaseClient): Promise<void> {
+  const { error } = await client.rpc("consume_ai_quota");
+  if (error) console.error("consume_ai_quota failed after a successful reply:", error);
 }
 
 async function callAnthropic(
@@ -298,6 +336,9 @@ async function callAnthropic(
 ): Promise<string> {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
+    // Abandonne la requête côté serveur, au lieu de seulement cesser de
+    // l'attendre : la connexion est réellement fermée.
+    signal: AbortSignal.timeout(ANTHROPIC_TIMEOUT_MS),
     headers: {
       "content-type": "application/json",
       "x-api-key": ANTHROPIC_API_KEY!,
