@@ -17,13 +17,12 @@ import { ErrorView } from "@/components/ui/ErrorView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
-import { fetchStatistics, computeCategoryScore, computePersonalBest } from "@/services/statisticsService";
-import { fetchGoals } from "@/services/goalsService";
-import { fetchSessionHistory } from "@/services/workoutService";
+import { computeCategoryScore, computePersonalBest } from "@/services/statisticsService";
+import { useGoals, useSessionHistory, useStatistics } from "@/hooks/queries";
 import { STAT_CATEGORIES, STAT_METRICS } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
 import { formatDurationMinutes } from "@/utils/duration";
-import type { Goal, StatCategory, Statistic, WorkoutSession } from "@/types/database";
+import type { StatCategory, Statistic } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
 
 type Period = "7j" | "30j" | "3m" | "tout";
@@ -39,30 +38,27 @@ export default function StatisticsScreen() {
   const router = useRouter();
   const { profile } = useProfileStore();
   const [period, setPeriod] = useState<Period>("30j");
-  const [allStats, setAllStats] = useState<Statistic[]>([]);
-  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Trois lectures indépendantes, donc trois entrées de cache : revenir sur
+  // l'onglet n'en relance que ce qui a réellement vieilli.
+  const statsQuery = useStatistics();
+  const historyQuery = useSessionHistory(200);
+  const goalsQuery = useGoals("active");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [stats, history, activeGoals] = await Promise.all([
-        fetchStatistics(),
-        fetchSessionHistory(200),
-        fetchGoals("active"),
-      ]);
-      setAllStats(stats);
-      setSessions(history);
-      setGoals(activeGoals);
-    } catch (e) {
-      setError(errorMessage(e, "Erreur de chargement des statistiques."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Mémorisés : sans cela, une nouvelle référence de tableau à chaque rendu
+  // relancerait tous les calculs dérivés en permanence.
+  const allStats = useMemo(() => statsQuery.data ?? [], [statsQuery.data]);
+  const sessions = useMemo(() => historyQuery.data ?? [], [historyQuery.data]);
+  const goals = goalsQuery.data ?? [];
+  const isPending = statsQuery.isPending || historyQuery.isPending || goalsQuery.isPending;
+  const isError = statsQuery.isError || historyQuery.isError || goalsQuery.isError;
+  const queryError = statsQuery.error ?? historyQuery.error ?? goalsQuery.error;
+  const isFetching = statsQuery.isFetching || historyQuery.isFetching || goalsQuery.isFetching;
+
+  const load = useCallback(() => {
+    void statsQuery.refetch();
+    void historyQuery.refetch();
+    void goalsQuery.refetch();
+  }, [statsQuery, historyQuery, goalsQuery]);
 
   useFocusEffect(
     useCallback(() => {
@@ -115,13 +111,15 @@ export default function StatisticsScreen() {
     return best;
   }, [allStats]);
 
-  if (loading) return <ProgressionSkeleton />;
-  if (error) return <ErrorView message={error} onRetry={load} />;
+  if (isPending) return <ProgressionSkeleton />;
+  if (isError) {
+    return <ErrorView message={errorMessage(queryError, "Erreur de chargement des statistiques.")} onRetry={load} />;
+  }
 
   const totalEntries = allStats.length;
 
   return (
-    <ScreenContainer onRefresh={load} refreshing={loading}>
+    <ScreenContainer onRefresh={load} refreshing={isFetching}>
       <View style={styles.headerRow}>
         <Text style={[typography.titleXL, { color: theme.text }]}>Progression</Text>
         <Button label="+ Ajouter" fullWidth={false} size="compact" onPress={() => router.push("/(tabs)/stats/add")} />

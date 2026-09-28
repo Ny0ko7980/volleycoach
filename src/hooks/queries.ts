@@ -5,7 +5,16 @@ import { withTimeout } from "@/utils/withTimeout";
 import { fetchExerciseById, fetchExercises, type ExerciseFilters } from "@/services/exerciseService";
 import { cacheExercisesForOffline } from "@/services/offlineQueue";
 import { createGoal, deleteGoal, fetchGoals, updateGoalProgress } from "@/services/goalsService";
-import type { GoalStatus } from "@/types/database";
+import { fetchMyProfile } from "@/services/profileService";
+import { fetchSessionHistory, fetchTodaySession } from "@/services/workoutService";
+import { fetchStatistics } from "@/services/statisticsService";
+import { fetchSkillScores } from "@/services/skillScoreService";
+import { fetchConversations } from "@/services/aiCoachService";
+import { fetchMyCoachingTeam, fetchMyTeamMembership, fetchTeamRoster } from "@/services/teamService";
+import { fetchAllPlayersAsAdmin, fetchGlobalStats } from "@/services/adminService";
+import { buildTrainingContext } from "@/services/trainingContextService";
+import { recommendSession } from "@/services/recommendationEngine";
+import type { GoalStatus, PlayerProfile } from "@/types/database";
 
 /**
  * Lectures serveur de l'application.
@@ -101,4 +110,113 @@ export function useUpdateGoalProgress() {
   return useGoalMutation((args: { goalId: string; currentValue: number }) =>
     updateGoalProgress(args.goalId, args.currentValue)
   );
+}
+
+// ---------------------------------------------------------------------------
+// Profil, séances, statistiques
+// ---------------------------------------------------------------------------
+
+export function useMyProfile() {
+  return useQuery({
+    queryKey: queryKeys.profile.me(),
+    queryFn: bounded(fetchMyProfile, "Profil"),
+  });
+}
+
+export function useTodaySession() {
+  return useQuery({
+    queryKey: queryKeys.sessions.today(),
+    queryFn: bounded(fetchTodaySession, "Séance du jour"),
+  });
+}
+
+export function useSessionHistory(limit = 30) {
+  return useQuery({
+    queryKey: queryKeys.sessions.history(limit),
+    queryFn: bounded(() => fetchSessionHistory(limit), "Historique des séances"),
+  });
+}
+
+export function useStatistics() {
+  return useQuery({
+    queryKey: queryKeys.statistics.all(),
+    queryFn: bounded(fetchStatistics, "Statistiques"),
+  });
+}
+
+export function useSkillScores() {
+  return useQuery({
+    queryKey: queryKeys.skillScores.all(),
+    queryFn: bounded(fetchSkillScores, "Scores de compétence"),
+  });
+}
+
+export function useConversations() {
+  return useQuery({
+    queryKey: queryKeys.conversations.list(),
+    queryFn: bounded(fetchConversations, "Conversations"),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Équipe
+// ---------------------------------------------------------------------------
+
+/**
+ * L'appartenance d'équipe d'un joueur, quelle qu'en soit la forme : il peut
+ * être coach d'une équipe qu'il a créée, ou membre d'une équipe rejointe. Les
+ * deux lectures sont faites ensemble parce que l'écran a besoin des deux pour
+ * savoir quoi afficher, et les séparer produirait deux états de chargement
+ * successifs pour une seule information.
+ */
+export function useMyTeam() {
+  return useQuery({
+    queryKey: queryKeys.team.mine(),
+    queryFn: bounded(async () => {
+      const [coaching, membership] = await Promise.all([fetchMyCoachingTeam(), fetchMyTeamMembership()]);
+      return { coaching, membership };
+    }, "Équipe"),
+  });
+}
+
+export function useTeamRoster(teamId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.team.roster(teamId ?? ""),
+    queryFn: bounded(() => fetchTeamRoster(teamId as string), "Effectif"),
+    enabled: Boolean(teamId),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Administration
+// ---------------------------------------------------------------------------
+
+export function useGlobalStats() {
+  return useQuery({
+    queryKey: queryKeys.admin.globalStats(),
+    queryFn: bounded(fetchGlobalStats, "Statistiques globales"),
+  });
+}
+
+export function useAllPlayers() {
+  return useQuery({
+    queryKey: queryKeys.admin.players(),
+    queryFn: bounded(fetchAllPlayersAsAdmin, "Liste des joueurs"),
+  });
+}
+
+/**
+ * Séance recommandée pour un joueur.
+ *
+ * Le moteur est une fonction pure : tout le coût est dans la construction du
+ * contexte, qui lit plusieurs tables. La mettre en cache évite de tout relire
+ * à chaque retour sur l'écran, alors que la recommandation ne change qu'après
+ * une séance terminée ou un ressenti enregistré.
+ */
+export function useRecommendedSession(profile: PlayerProfile | null) {
+  return useQuery({
+    queryKey: queryKeys.recommendation.forPlayer(profile?.id ?? ""),
+    queryFn: bounded(async () => recommendSession(await buildTrainingContext(profile as PlayerProfile)), "Séance recommandée"),
+    enabled: Boolean(profile),
+  });
 }

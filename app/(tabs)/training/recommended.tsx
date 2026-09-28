@@ -1,6 +1,6 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Sparkles, Clock3, Flame, Target } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { Card } from "@/components/ui/Card";
@@ -11,12 +11,8 @@ import { ErrorView } from "@/components/ui/ErrorView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
-import {
-  describeRecommendation,
-  recommendSession,
-  type SessionRecommendation,
-} from "@/services/recommendationEngine";
-import { buildTrainingContext } from "@/services/trainingContextService";
+import { describeRecommendation, type SessionRecommendation } from "@/services/recommendationEngine";
+import { useRecommendedSession } from "@/hooks/queries";
 import { generateWorkoutFromRecommendation, startWorkoutSession } from "@/services/workoutService";
 import { skillIcon, skillLabel } from "@/constants/skills";
 import { spacing, typography, radius } from "@/constants/theme";
@@ -33,41 +29,24 @@ export default function RecommendedSessionScreen() {
   const router = useRouter();
   const { profile } = useProfileStore();
 
-  const [recommendation, setRecommendation] = useState<SessionRecommendation | null>(null);
-  const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!profile) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const context = await buildTrainingContext(profile);
-      setRecommendation(recommendSession(context));
-    } catch (e) {
-      setError(errorMessage(e, "Impossible de préparer la recommandation."));
-    } finally {
-      setLoading(false);
-    }
-  }, [profile]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  // Erreur propre au démarrage de la séance, distincte de celle du chargement
+  // de la recommandation : les deux ne se réessaient pas de la même façon.
+  const [startError, setStartError] = useState<string | null>(null);
+  const { data, isPending, isError, error, refetch } = useRecommendedSession(profile ?? null);
+  const recommendation = data ?? null;
+  const load = refetch;
 
   async function handleStart() {
     if (!recommendation || !profile) return;
     setStarting(true);
-    setError(null);
+    setStartError(null);
     try {
       const workout = await generateWorkoutFromRecommendation(recommendation, profile);
       const session = await startWorkoutSession(workout.id);
       router.replace(`/(tabs)/training/session/${session.id}`);
     } catch (e) {
-      setError(errorMessage(e, "Impossible de générer la séance."));
+      setStartError(errorMessage(e, "Impossible de générer la séance."));
     } finally {
       setStarting(false);
     }
@@ -76,9 +55,11 @@ export default function RecommendedSessionScreen() {
   if (!profile) {
     return <EmptyState title="Profil incomplet" description="Termine ton profil pour recevoir une recommandation." />;
   }
-  if (loading) return <LoadingView label="Analyse de ton profil..." />;
-  if (error && !recommendation) return <ErrorView message={error} onRetry={load} />;
-  if (!recommendation) return <ErrorView message="Aucune recommandation disponible." onRetry={load} />;
+  if (isPending) return <LoadingView label="Analyse de ton profil..." />;
+  if (isError && !recommendation) {
+    return <ErrorView message={errorMessage(error, "Erreur de chargement.")} onRetry={() => void load()} />;
+  }
+  if (!recommendation) return <ErrorView message="Aucune recommandation disponible." onRetry={() => void load()} />;
 
   return (
     <ScreenContainer>
@@ -141,7 +122,7 @@ export default function RecommendedSessionScreen() {
         </View>
       </Card>
 
-      {error ? <Text style={{ color: theme.danger, marginBottom: spacing.md }}>{error}</Text> : null}
+      {startError ? <Text style={{ color: theme.danger, marginBottom: spacing.md }}>{startError}</Text> : null}
 
       <Button label="Démarrer cette séance" onPress={handleStart} loading={starting} />
       <View style={{ marginTop: spacing.sm }}>

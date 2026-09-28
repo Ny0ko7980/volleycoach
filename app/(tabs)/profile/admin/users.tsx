@@ -10,7 +10,8 @@ import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useAuthStore } from "@/store/authStore";
 import { useProfileStore } from "@/store/profileStore";
-import { fetchAllPlayersAsAdmin, setPlayerRoleAsAdmin } from "@/services/adminService";
+import { setPlayerRoleAsAdmin } from "@/services/adminService";
+import { useAllPlayers } from "@/hooks/queries";
 import { positionLabel, levelLabel } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { PlayerProfile, PlayerRole } from "@/types/database";
@@ -26,27 +27,15 @@ export default function AdminUsersScreen() {
   const { theme } = useAppTheme();
   const { session } = useAuthStore();
   const { profile } = useProfileStore();
-  const [players, setPlayers] = useState<PlayerProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setPlayers(await fetchAllPlayersAsAdmin());
-    } catch (e) {
-      setError(errorMessage(e, "Erreur de chargement."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isPending, isError, error, refetch, isFetching } = useAllPlayers();
+  const players = data ?? [];
+  const load = refetch;
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      void refetch();
+    }, [refetch])
   );
 
   function handleChangeRole(player: PlayerProfile, role: PlayerRole) {
@@ -65,8 +54,11 @@ export default function AdminUsersScreen() {
           onPress: async () => {
             setUpdatingId(player.id);
             try {
-              const updated = await setPlayerRoleAsAdmin(player.id, role);
-              setPlayers((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+              await setPlayerRoleAsAdmin(player.id, role);
+              // On relit la liste plutôt que de la rapiécer localement : le
+              // cache est partagé, et une retouche à la main laisserait les
+              // autres écrans sur l'ancienne valeur.
+              await refetch();
             } catch (e) {
               Alert.alert("Erreur", errorMessage(e, "Impossible de changer le rôle."));
             } finally {
@@ -79,11 +71,13 @@ export default function AdminUsersScreen() {
   }
 
   if (profile?.role !== "admin") return <ErrorView message="Accès réservé aux administrateurs." />;
-  if (loading) return <LoadingView />;
-  if (error) return <ErrorView message={error} onRetry={load} />;
+  if (isPending) return <LoadingView />;
+  if (isError) {
+    return <ErrorView message={errorMessage(error, "Erreur de chargement.")} onRetry={() => void load()} />;
+  }
 
   return (
-    <ScreenContainer onRefresh={load} refreshing={loading}>
+    <ScreenContainer onRefresh={() => void load()} refreshing={isFetching}>
       <Text style={[styles.title, { color: theme.text }]}>Utilisateurs ({players.length})</Text>
 
       {players.map((p) => (

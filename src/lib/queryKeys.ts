@@ -32,4 +32,26 @@ export const queryKeys = {
     root: ["statistics"] as const,
     all: () => ["statistics", "all"] as const,
   },
+  skillScores: {
+    root: ["skillScores"] as const,
+    all: () => ["skillScores", "all"] as const,
+  },
+  conversations: {
+    root: ["conversations"] as const,
+    list: () => ["conversations", "list"] as const,
+  },
+  team: {
+    root: ["team"] as const,
+    mine: () => ["team", "mine"] as const,
+    roster: (teamId: string) => ["team", "roster", teamId] as const,
+  },
+  recommendation: {
+    root: ["recommendation"] as const,
+    forPlayer: (playerId: string) => ["recommendation", playerId] as const,
+  },
+  admin: {
+    root: ["admin"] as const,
+    globalStats: () => ["admin", "globalStats"] as const,
+    players: () => ["admin", "players"] as const,
+  },
 } as const;

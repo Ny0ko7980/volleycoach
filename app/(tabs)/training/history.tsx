@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Text, View, StyleSheet } from "react-native";
 import { History as HistoryIcon } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
@@ -8,9 +7,8 @@ import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { fetchSessionHistory } from "@/services/workoutService";
+import { useSessionHistory } from "@/hooks/queries";
 import { spacing, typography } from "@/constants/theme";
-import type { WorkoutSession } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
 
 const STATUS_LABEL: Record<string, { label: string; tone: "success" | "primary" | "neutral" }> = {
@@ -22,26 +20,16 @@ const STATUS_LABEL: Record<string, { label: string; tone: "success" | "primary" 
 
 export default function TrainingHistoryScreen() {
   const { theme } = useAppTheme();
-  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isPending, isError, error, refetch, isFetching } = useSessionHistory(100);
+  const sessions = data ?? [];
 
-  function load() {
-    setLoading(true);
-    setError(null);
-    fetchSessionHistory(100)
-      .then(setSessions)
-      .catch((e) => setError(errorMessage(e, "Erreur de chargement.")))
-      .finally(() => setLoading(false));
+  if (isPending) return <LoadingView />;
+  if (isError) {
+    return <ErrorView message={errorMessage(error, "Erreur de chargement.")} onRetry={() => void refetch()} />;
   }
 
-  useEffect(load, []);
-
-  if (loading) return <LoadingView />;
-  if (error) return <ErrorView message={error} onRetry={load} />;
-
   return (
-    <ScreenContainer onRefresh={load} refreshing={loading}>
+    <ScreenContainer onRefresh={() => void refetch()} refreshing={isFetching}>
       <Text style={[styles.title, { color: theme.text }]}>Journal d'entraînement</Text>
 
       {sessions.length === 0 ? (

@@ -9,9 +9,9 @@ import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { fetchConversations, createConversation } from "@/services/aiCoachService";
+import { createConversation } from "@/services/aiCoachService";
+import { useConversations } from "@/hooks/queries";
 import { spacing, typography } from "@/constants/theme";
-import type { AiConversation } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
 
 const SUGGESTED_QUESTIONS = [
@@ -24,27 +24,17 @@ const SUGGESTED_QUESTIONS = [
 export default function CoachHomeScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
-  const [conversations, setConversations] = useState<AiConversation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const { data, isPending, isError, error, refetch, isFetching } = useConversations();
+  const conversations = data ?? [];
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setConversations(await fetchConversations());
-    } catch (e) {
-      setError(errorMessage(e, "Erreur de chargement."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // Le focus de l'onglet marque la donnée comme périmée plutôt que de relancer
+  // la requête : si elle est encore fraîche, react-query n'appelle rien, et la
+  // liste s'affiche immédiatement au lieu de repasser par un chargement.
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      void refetch();
+    }, [refetch])
   );
 
   async function handleNewConversation(initialQuestion?: string) {
@@ -57,11 +47,13 @@ export default function CoachHomeScreen() {
     }
   }
 
-  if (loading) return <LoadingView />;
-  if (error) return <ErrorView message={error} onRetry={load} />;
+  if (isPending) return <LoadingView />;
+  if (isError) {
+    return <ErrorView message={errorMessage(error, "Erreur de chargement.")} onRetry={() => void refetch()} />;
+  }
 
   return (
-    <ScreenContainer onRefresh={load} refreshing={loading}>
+    <ScreenContainer onRefresh={() => void refetch()} refreshing={isFetching}>
       <View style={styles.header}>
         <View style={[styles.botIcon, { backgroundColor: theme.primaryMuted }]}>
           <Bot size={22} color={theme.primary} />

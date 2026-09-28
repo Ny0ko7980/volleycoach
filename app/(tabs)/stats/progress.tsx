@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { Text, View, StyleSheet } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Target } from "lucide-react-native";
@@ -10,65 +10,58 @@ import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { fetchStatistics, computeCategoryScore } from "@/services/statisticsService";
-import { fetchGoals } from "@/services/goalsService";
-import { fetchSessionHistory } from "@/services/workoutService";
-import { fetchSkillScores, type SkillScoreResult } from "@/services/skillScoreService";
+import { computeCategoryScore } from "@/services/statisticsService";
+import { useGoals, useSessionHistory, useSkillScores, useStatistics } from "@/hooks/queries";
 import { SkillScoreList } from "@/components/training/SkillScoreList";
 import { STAT_CATEGORIES } from "@/constants/positions";
 import { spacing, typography } from "@/constants/theme";
-import type { Goal, StatCategory, WorkoutSession } from "@/types/database";
+import type { StatCategory } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
 
 export default function ProgressScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
-  const [scores, setScores] = useState<Record<StatCategory, number>>({
-    service: 0,
-    reception: 0,
-    attaque: 0,
-    bloc: 0,
-    defense: 0,
-    physique: 0,
-  });
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [skillScores, setSkillScores] = useState<SkillScoreResult[]>([]);
-  const [sessionsThisWeek, setSessionsThisWeek] = useState(0);
-  const [sessionsThisMonth, setSessionsThisMonth] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const statsQuery = useStatistics();
+  const goalsQuery = useGoals("active");
+  const historyQuery = useSessionHistory(200);
+  const skillsQuery = useSkillScores();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [allStats, activeGoals, sessions, skills] = await Promise.all([
-        fetchStatistics(),
-        fetchGoals("active"),
-        fetchSessionHistory(200),
-        fetchSkillScores(),
-      ]);
-      setSkillScores(skills);
+  const goals = goalsQuery.data ?? [];
+  const skillScores = skillsQuery.data ?? [];
+  const isPending = statsQuery.isPending || goalsQuery.isPending || historyQuery.isPending || skillsQuery.isPending;
+  const isError = statsQuery.isError || goalsQuery.isError || historyQuery.isError || skillsQuery.isError;
+  const queryError = statsQuery.error ?? goalsQuery.error ?? historyQuery.error ?? skillsQuery.error;
+  const isFetching =
+    statsQuery.isFetching || goalsQuery.isFetching || historyQuery.isFetching || skillsQuery.isFetching;
 
-      const grouped: Record<StatCategory, typeof allStats> = { service: [], reception: [], attaque: [], bloc: [], defense: [], physique: [] };
-      for (const s of allStats) grouped[s.category].push(s);
-      const nextScores = {} as Record<StatCategory, number>;
-      for (const cat of STAT_CATEGORIES) nextScores[cat.value] = computeCategoryScore(grouped[cat.value]);
-      setScores(nextScores);
-      setGoals(activeGoals);
+  // Dérivé de la donnée, plus recopié dans un état : une valeur calculée qui
+  // vit dans un `useState` finit toujours par être en retard sur sa source.
+  const scores = useMemo(() => {
+    const allStats = statsQuery.data ?? [];
+    const grouped: Record<StatCategory, typeof allStats> = {
+      service: [], reception: [], attaque: [], bloc: [], defense: [], physique: [],
+    };
+    // `?.` volontaire : une catégorie inconnue venue de la base ferait sinon
+    // un « undefined.push » au rendu, donc un écran noir en production.
+    for (const stat of allStats) grouped[stat.category]?.push(stat);
+    const next = {} as Record<StatCategory, number>;
+    for (const cat of STAT_CATEGORIES) next[cat.value] = computeCategoryScore(grouped[cat.value]);
+    return next;
+  }, [statsQuery.data]);
 
-      const now = new Date();
-      const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
-      const monthAgo = new Date(now.getTime() - 30 * 86_400_000);
-      const completed = sessions.filter((s: WorkoutSession) => s.status === "completed");
-      setSessionsThisWeek(completed.filter((s) => new Date(s.created_at) >= weekAgo).length);
-      setSessionsThisMonth(completed.filter((s) => new Date(s.created_at) >= monthAgo).length);
-    } catch (e) {
-      setError(errorMessage(e, "Erreur de chargement."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { sessionsThisWeek, sessionsThisMonth } = useMemo(() => {
+    const now = Date.now();
+    const completed = (historyQuery.data ?? []).filter((s) => s.status === "completed");
+    const since = (days: number) => completed.filter((s) => new Date(s.created_at).getTime() >= now - days * 86_400_000).length;
+    return { sessionsThisWeek: since(7), sessionsThisMonth: since(30) };
+  }, [historyQuery.data]);
+
+  const load = useCallback(() => {
+    void statsQuery.refetch();
+    void goalsQuery.refetch();
+    void historyQuery.refetch();
+    void skillsQuery.refetch();
+  }, [statsQuery, goalsQuery, historyQuery, skillsQuery]);
 
   useFocusEffect(
     useCallback(() => {
@@ -76,11 +69,13 @@ export default function ProgressScreen() {
     }, [load])
   );
 
-  if (loading) return <LoadingView />;
-  if (error) return <ErrorView message={error} onRetry={load} />;
+  if (isPending) return <LoadingView />;
+  if (isError) {
+    return <ErrorView message={errorMessage(queryError, "Erreur de chargement.")} onRetry={load} />;
+  }
 
   return (
-    <ScreenContainer onRefresh={load} refreshing={loading}>
+    <ScreenContainer onRefresh={load} refreshing={isFetching}>
       <Text style={[styles.title, { color: theme.text }]}>Ma progression</Text>
 
       <Card>

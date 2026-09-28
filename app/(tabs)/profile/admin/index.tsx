@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
@@ -8,8 +8,8 @@ import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
-import { fetchExercises } from "@/services/exerciseService";
-import { fetchGlobalStats, deleteExerciseAsAdmin, type GlobalStats } from "@/services/adminService";
+import { deleteExerciseAsAdmin } from "@/services/adminService";
+import { useExercises, useGlobalStats } from "@/hooks/queries";
 import { objectiveLabel } from "@/constants/positions";
 import { spacing } from "@/constants/theme";
 import type { ExerciseSummary } from "@/types/database";
@@ -19,24 +19,19 @@ export default function AdminHomeScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
   const { profile } = useProfileStore();
-  const [stats, setStats] = useState<GlobalStats | null>(null);
-  const [exercises, setExercises] = useState<ExerciseSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const statsQuery = useGlobalStats();
+  const exercisesQuery = useExercises();
+  const stats = statsQuery.data ?? null;
+  const exercises = exercisesQuery.data ?? [];
+  const isPending = statsQuery.isPending || exercisesQuery.isPending;
+  const isError = statsQuery.isError || exercisesQuery.isError;
+  const error = statsQuery.error ?? exercisesQuery.error;
+  const isFetching = statsQuery.isFetching || exercisesQuery.isFetching;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [globalStats, exerciseList] = await Promise.all([fetchGlobalStats(), fetchExercises()]);
-      setStats(globalStats);
-      setExercises(exerciseList);
-    } catch (e) {
-      setError(errorMessage(e, "Erreur de chargement."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(() => {
+    void statsQuery.refetch();
+    void exercisesQuery.refetch();
+  }, [statsQuery, exercisesQuery]);
 
   useFocusEffect(
     useCallback(() => {
@@ -69,11 +64,13 @@ export default function AdminHomeScreen() {
     return <ErrorView message="Accès réservé aux administrateurs." />;
   }
 
-  if (loading) return <LoadingView />;
-  if (error) return <ErrorView message={error} onRetry={load} />;
+  if (isPending) return <LoadingView />;
+  if (isError) {
+    return <ErrorView message={errorMessage(error, "Erreur de chargement.")} onRetry={load} />;
+  }
 
   return (
-    <ScreenContainer onRefresh={load} refreshing={loading}>
+    <ScreenContainer onRefresh={load} refreshing={isFetching}>
       <Text style={[styles.title, { color: theme.text }]}>Administration</Text>
 
       {stats ? (

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { CircleCheck, Clock3, CalendarClock, Dumbbell, ChevronRight, Play, Sparkles, SlidersHorizontal } from "lucide-react-native";
@@ -11,9 +11,9 @@ import { LoadingView } from "@/components/ui/LoadingView";
 import { ErrorView } from "@/components/ui/ErrorView";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
-import { fetchTodaySession, fetchSessionHistory } from "@/services/workoutService";
+import { useSessionHistory, useTodaySession } from "@/hooks/queries";
 import { spacing, typography, radius } from "@/constants/theme";
-import type { WorkoutSession } from "@/types/database";
+
 import { errorMessage } from "@/utils/errors";
 import { APP_NAME } from "@/constants/brand";
 
@@ -21,24 +21,19 @@ export default function TrainingHomeScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
   const { profile } = useProfileStore();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [session, setSession] = useState<WorkoutSession | null>(null);
-  const [recent, setRecent] = useState<WorkoutSession[]>([]);
+  const todayQuery = useTodaySession();
+  const recentQuery = useSessionHistory(5);
+  const session = todayQuery.data ?? null;
+  const recent = recentQuery.data ?? [];
+  const isPending = todayQuery.isPending || recentQuery.isPending;
+  const isError = todayQuery.isError || recentQuery.isError;
+  const queryError = todayQuery.error ?? recentQuery.error;
+  const isFetching = todayQuery.isFetching || recentQuery.isFetching;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [today, history] = await Promise.all([fetchTodaySession(), fetchSessionHistory(5)]);
-      setSession(today);
-      setRecent(history);
-    } catch (e) {
-      setError(errorMessage(e, "Erreur de chargement."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(() => {
+    void todayQuery.refetch();
+    void recentQuery.refetch();
+  }, [todayQuery, recentQuery]);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,11 +41,13 @@ export default function TrainingHomeScreen() {
     }, [load])
   );
 
-  if (loading) return <LoadingView />;
-  if (error) return <ErrorView message={error} onRetry={load} />;
+  if (isPending) return <LoadingView />;
+  if (isError) {
+    return <ErrorView message={errorMessage(queryError, "Erreur de chargement.")} onRetry={load} />;
+  }
 
   return (
-    <ScreenContainer onRefresh={load} refreshing={loading}>
+    <ScreenContainer onRefresh={load} refreshing={isFetching}>
       <Text style={[typography.titleXL, styles.title, { color: theme.text }]}>Entraînement</Text>
 
       {session ? (
