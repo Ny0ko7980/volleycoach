@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Settings, Flame, TrendingUp, Calendar, Target } from "lucide-react-native";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
@@ -14,7 +14,9 @@ import { SkeletonCard, Skeleton } from "@/components/ui/Skeleton";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useProfileStore } from "@/store/profileStore";
 import { fetchMyProfile } from "@/services/profileService";
-import { generateWorkout, fetchTodaySession, startWorkoutSession, fetchSessionHistory } from "@/services/workoutService";
+import { generateWorkout, fetchTodaySession, startWorkoutSession, fetchSessionHistory,
+  fetchTodayGeneratedWorkout,
+} from "@/services/workoutService";
 import { fetchStatistics, computeCategoryScore } from "@/services/statisticsService";
 import { fetchGoals, goalProgressPercent } from "@/services/goalsService";
 import { positionLabel, levelLabel } from "@/constants/positions";
@@ -48,14 +50,19 @@ export default function DashboardScreen() {
       const session = await fetchTodaySession();
       setTodaySession(session);
       if (!session && freshProfile) {
-        const objective = freshProfile.goals[0] ?? "global";
-        const generated = await generateWorkout({
-          objective,
-          durationMinutes: 30,
-          level: freshProfile.level,
-          position: freshProfile.position,
-        });
-        setTodayWorkout(generated);
+        // On réutilise la proposition du jour si elle existe déjà.
+        // `generateWorkout` écrit en base : l'appeler à chaque focus de
+        // l'onglet créait une séance orpheline par aller-retour.
+        const existing = await fetchTodayGeneratedWorkout();
+        setTodayWorkout(
+          existing ??
+            (await generateWorkout({
+              objective: freshProfile.goals[0] ?? "global",
+              durationMinutes: 30,
+              level: freshProfile.level,
+              position: freshProfile.position,
+            }))
+        );
       }
 
       const allStats = await fetchStatistics();
@@ -89,6 +96,10 @@ export default function DashboardScreen() {
     try {
       const session = await startWorkoutSession(todayWorkout.id);
       router.push(`/(tabs)/training/session/${session.id}`);
+    } catch (e) {
+      // Sans ce catch, l'échec se traduisait par un bouton qui arrête
+      // simplement de tourner : rien ne se passait, sans explication.
+      Alert.alert("Séance non démarrée", errorMessage(e, "La séance n'a pas pu démarrer. Vérifie ta connexion et réessaie."));
     } finally {
       setStarting(false);
     }

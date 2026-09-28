@@ -413,6 +413,44 @@ export async function fetchSessionHistory(limit = 30): Promise<WorkoutSession[]>
   return (data ?? []) as WorkoutSession[];
 }
 
+/**
+ * Séance déjà proposée aujourd'hui et pas encore lancée, s'il y en a une.
+ *
+ * L'accueil appelait `generateWorkout()` à chaque fois que l'onglet reprenait
+ * le focus, et `generateWorkout()` écrit en base : chaque aller-retour
+ * Accueil → Entraînement → Accueil créait donc une séance orpheline et ses
+ * lignes d'exercices. Sur une semaine de bêta, cela fait des centaines de
+ * lignes mortes par joueur et un historique illisible.
+ *
+ * On relit donc la proposition du jour au lieu d'en fabriquer une nouvelle.
+ * `generated` distingue une séance produite par le moteur d'une séance créée à
+ * la main par le joueur, qu'on ne veut pas lui resservir comme « séance du
+ * jour ».
+ */
+export async function fetchTodayGeneratedWorkout(): Promise<(Workout & { exercises: WorkoutExercise[] }) | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return null;
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from("workouts")
+    .select("*, exercises:workout_exercises(*, exercise:exercises(*))")
+    .eq("player_id", auth.user.id)
+    .eq("generated", true)
+    .gte("created_at", startOfDay.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const workout = data as Workout & { exercises: WorkoutExercise[] };
+  // Une séance sans exercice serait inutilisable : on préfère en régénérer une.
+  return workout.exercises.length > 0 ? workout : null;
+}
+
 export async function fetchTodaySession(): Promise<WorkoutSession | null> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return null;
