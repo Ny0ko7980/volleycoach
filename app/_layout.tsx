@@ -4,12 +4,15 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { View } from "react-native";
 import { useAuthStore } from "@/store/authStore";
 import { useProfileStore } from "@/store/profileStore";
 import { fetchMyProfile } from "@/services/profileService";
 import { queryClient } from "@/lib/queryClient";
 import { LoadingView } from "@/components/ui/LoadingView";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { ConfigErrorView } from "@/components/ConfigErrorView";
 import { isSupabaseConfigured, missingSupabaseEnvVars } from "@/lib/supabase";
 import { APP_NAME } from "@/constants/brand";
@@ -20,6 +23,11 @@ function RootNavigationGate() {
   const { session, initializing, init } = useAuthStore();
   const { profile, setProfile } = useProfileStore();
   const [profileLoading, setProfileLoading] = useState(true);
+
+  // Rejoue les mutations mises en attente hors-ligne (ouverture de session,
+  // retour du réseau, retour au premier plan). Monté ici pour couvrir toute
+  // l'application, y compris quand le joueur n'est plus sur l'écran de séance.
+  useOfflineSync();
 
   useEffect(() => {
     const unsubscribe = init();
@@ -70,7 +78,12 @@ function RootNavigationGate() {
     return <LoadingView label={`Chargement de ${APP_NAME}...`} />;
   }
 
-  return <Slot />;
+  return (
+    <View style={{ flex: 1 }}>
+      <Slot />
+      <SyncStatusBanner />
+    </View>
+  );
 }
 
 export default function RootLayout() {

@@ -19,15 +19,20 @@ import {
   completeWorkoutSession,
   fetchWorkoutWithExercises,
   updateSessionProgress,
+  type CompleteSessionInput,
 } from "@/services/workoutService";
 import { saveExerciseFeedback } from "@/services/feedbackService";
 import { refreshSkillScores } from "@/services/skillScoreService";
 import { applySessionRewards } from "@/services/gamificationService";
 import { notifyAchievementUnlocked } from "@/services/notificationsService";
-import { queueMutation } from "@/services/offlineQueue";
+import {
+  classifySupabaseFailure,
+  queueExerciseFeedback,
+  queueWorkoutSessionCompletion,
+} from "@/services/offlineQueue";
 import { skillOfExercise } from "@/constants/skills";
 import { radius, spacing, typography } from "@/constants/theme";
-import type { FeedbackRating, Workout, WorkoutExercise } from "@/types/database";
+import type { Achievement, FeedbackRating, Workout, WorkoutExercise } from "@/types/database";
 import { errorMessage } from "@/utils/errors";
 
 /**
@@ -191,12 +196,25 @@ export default function TrainingModeScreen() {
     if (!current?.exercise || !sessionId) return;
     Haptics.selectionAsync().catch(() => undefined);
     setRatings((previous) => ({ ...previous, [current.exercise_id]: rating }));
-    await saveExerciseFeedback({
+    const feedback = {
       sessionId,
       exerciseId: current.exercise_id,
       skill: skillOfExercise(current.exercise),
       rating,
-    }).catch(() => undefined);
+    };
+    try {
+      await saveExerciseFeedback(feedback);
+    } catch (error) {
+      // Le ressenti est une donnée que le joueur vient de saisir : une coupure
+      // réseau le met en file d'attente au lieu de l'effacer sans rien dire.
+      // Un refus définitif (RLS, contrainte) n'est pas rejouable : il relève
+      // du journal, pas de la file, où il ne ferait qu'alarmer le joueur.
+      if (classifySupabaseFailure(error) === "permanent") {
+        console.warn("Ressenti d'exercice refusé, non rejouable :", error);
+      } else {
+        await queueExerciseFeedback(feedback);
+      }
+    }
   }
 
   function handlePrevious() {
@@ -220,50 +238,69 @@ export default function TrainingModeScreen() {
     if (!sessionId || !profile) return;
     setFinishing(true);
     const durationMinutes = Math.max(1, Math.round((Date.now() - startedAt.current) / 60000));
+    const completion: CompleteSessionInput = {
+      durationMinutes,
+      // Les échelles non renseignées retombent sur la valeur neutre plutôt
+      // que de bloquer la fin de séance sur un formulaire obligatoire.
+      perceivedDifficulty: difficulty ?? 3,
+      performanceRating: satisfaction ?? 3,
+      ...(fatigue !== null ? { fatigueLevel: fatigue } : {}),
+      ...(satisfaction !== null ? { satisfaction } : {}),
+    };
+
     try {
-      await completeWorkoutSession(sessionId, {
-        durationMinutes,
-        // Les échelles non renseignées retombent sur la valeur neutre plutôt
-        // que de bloquer la fin de séance sur un formulaire obligatoire.
-        perceivedDifficulty: difficulty ?? 3,
-        performanceRating: satisfaction ?? 3,
-        ...(fatigue !== null ? { fatigueLevel: fatigue } : {}),
-        ...(satisfaction !== null ? { satisfaction } : {}),
-      });
-      // Les scores de compétence alimentent la prochaine recommandation : on
-      // les recalcule maintenant, sans faire échouer la fin de séance.
-      await refreshSkillScores().catch(() => undefined);
-      const { profile: updatedProfile, newAchievements } = await applySessionRewards(profile);
-      setProfile(updatedProfile);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      for (const achievement of newAchievements) {
-        await notifyAchievementUnlocked(achievement.name, achievement.icon);
+      await completeWorkoutSession(sessionId, completion);
+    } catch (error) {
+      setFinishing(false);
+      // Un refus définitif ne doit pas être annoncé comme « enregistré
+      // hors-ligne » : la séance ne partirait jamais et le joueur croirait
+      // qu'elle est sauvée. On distingue donc la coupure réseau du refus.
+      if (classifySupabaseFailure(error) === "permanent") {
+        Alert.alert(
+          "Séance non enregistrée",
+          errorMessage(error, "Ta séance n'a pas pu être enregistrée. Note tes ressentis, puis réessaie.")
+        );
+        return;
       }
+      await queueWorkoutSessionCompletion(sessionId, completion);
       Alert.alert(
-        "Séance terminée !",
-        newAchievements.length > 0
-          ? `Bravo, tu as débloqué: ${newAchievements.map((a) => a.name).join(", ")}`
-          : "Bravo, continue comme ça !",
+        "Séance enregistrée hors-ligne",
+        "Elle est conservée sur ton téléphone et sera synchronisée dès que tu retrouveras une connexion.",
         [{ text: "OK", onPress: () => router.replace("/(tabs)") }]
       );
-    } catch {
-      // Hors-ligne ou erreur réseau: on met la complétion en file d'attente
-      // pour synchronisation ultérieure, sans bloquer le joueur.
-      await queueMutation("workout_sessions", {
-        id: sessionId,
-        status: "completed",
-        completed_at: new Date().toISOString(),
-        duration_minutes: durationMinutes,
-        perceived_difficulty: difficulty ?? 3,
-        fatigue_level: fatigue,
-        satisfaction,
-      });
-      Alert.alert("Séance enregistrée hors-ligne", "Elle sera synchronisée dès que tu retrouveras une connexion.", [
-        { text: "OK", onPress: () => router.replace("/(tabs)") },
-      ]);
-    } finally {
-      setFinishing(false);
+      return;
     }
+
+    // À partir d'ici la séance est enregistrée côté serveur. Tout ce qui suit
+    // est un complément : un échec ne doit plus jamais faire croire au joueur
+    // que sa séance est « hors-ligne », ni la remettre en file d'attente.
+    await refreshSkillScores().catch(() => undefined);
+
+    let newAchievements: Achievement[] = [];
+    try {
+      const rewards = await applySessionRewards(profile);
+      setProfile(rewards.profile);
+      newAchievements = rewards.newAchievements;
+    } catch (error) {
+      // L'XP, le niveau, la série et les badges sont attribués côté serveur
+      // par le déclencheur `trg_apply_rewards_after_session` au moment où la
+      // séance passe à « completed ». Ne pas réussir à les relire ne les perd
+      // pas : le profil sera à jour au prochain chargement.
+      console.warn("Récompenses non relues après la séance :", error);
+    }
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    for (const achievement of newAchievements) {
+      await notifyAchievementUnlocked(achievement.name, achievement.icon);
+    }
+    setFinishing(false);
+    Alert.alert(
+      "Séance terminée !",
+      newAchievements.length > 0
+        ? `Bravo, tu as débloqué: ${newAchievements.map((a) => a.name).join(", ")}`
+        : "Bravo, continue comme ça !",
+      [{ text: "OK", onPress: () => router.replace("/(tabs)") }]
+    );
   }
 
   function handleFinishEarly() {
