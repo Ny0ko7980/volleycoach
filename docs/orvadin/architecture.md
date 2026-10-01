@@ -16,6 +16,33 @@ Distinguer toujours :
 Squelette. La première mission du CTO est de le documenter à partir du dépôt, en **PROPOSÉ**,
 pour relecture d'Adrien. Rien ci-dessous n'est VALIDÉ.
 
+## Identifiant du projet Supabase (PROPOSÉ)
+
+Consigné le 2026-10-01 à la demande d'Adrien, pour que le CTO puisse utiliser ses outils
+Supabase en lecture seule (chacun exige un `project_id`).
+
+- Projet Supabase de production : « Coach Volley », **`project_id` = `acywvbxezaoioapdmicl`**.
+- Source : outil `list_projects` (lecture seule), 2026-10-01. C'est le seul projet du compte.
+- Ce n'est pas un secret : l'identifiant fait partie de l'URL publique
+  `https://<project_id>.supabase.co` embarquée dans l'application (`README.md`, § 2). Aucune
+  clé ni aucun jeton ne doit jamais être consigné dans ce fichier.
+- Le CTO n'a pas l'outil `list_projects`. Si cet identifiant est absent ou rejeté, il le signale
+  au lieu de le deviner.
+
+## Périmètre d'analyse : branches du dépôt (constat — PROPOSÉ)
+
+Constaté le 2026-10-01 avec git, en lecture seule. L'état du code dépend de la branche lue :
+
+- `main` (`0ca6d65`, 2026-09-20) et la branche de travail des agents
+  (`claude/orvadin-agents-setup-fdqo21`, basée sur `main`) : application « Coach Volley ».
+- `claude/coach-volley-app-051xnb` (distante) : 21 commits postérieurs à `main`
+  (2026-09-27 et 2026-09-28), sans pull request ouverte (la PR #2 est fermée). D'après leurs
+  titres : renommage du nom affiché en ORVADIN (`d66d84d`), migrations horodatées
+  `2026092x_*` présentes en production (`f6c89d5` et trois commits suivants), réparation de la
+  file hors ligne, session Supabase placée dans le stockage sécurisé du système.
+- Tout constat technique ou produit doit dire quelle branche il décrit. Ne pas déduire de `main`
+  l'état de la production.
+
 ## Technologies connues (brief d'Adrien, vérifiables dans `package.json` — PROPOSÉ)
 
 - Expo et React Native (Expo Router)

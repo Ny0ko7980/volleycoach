@@ -42,8 +42,10 @@ faire valider.
   wordmark de référence reste à confirmer (Q-002).
 - Le design system de l'application est dans `src/constants/theme.ts` et s'intitule
   « Coach Volley ». Sa conformité avec la direction artistique Orvadin n'est **pas établie**.
-- Le nom affiché par l'application est « Coach Volley » (`app.json`). Voir Q-001.
-- Il n'existe aucune mention d'« Orvadin » dans le dépôt à la date d'installation.
+- Sur `main` et la branche de travail, le nom affiché par l'application est « Coach Volley »
+  (`app.json`) et « Orvadin » n'apparaît pas dans le code. La branche distante non fusionnée
+  `claude/coach-volley-app-051xnb` affiche déjà « ORVADIN » (commit `d66d84d`, 2026-09-27).
+  Statut de ce renommage : non documenté. Voir Q-001.
 
 ## Remises en question en cours
 

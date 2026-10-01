@@ -10,15 +10,20 @@ fichier vers `decisions.md` (la question est alors marquée « Résolue par D-NN
 - Statut : À DÉCIDER
 - Date : 2026-10-01
 - Domaine : marque / produit
-- Constat : L'application s'appelle « Coach Volley » (`app.json` : `name`, `slug`, `scheme`,
-  identifiants `com.coachvolley.app`), son design system est intitulé « Coach Volley »
-  (`src/constants/theme.ts`) et le terme « Orvadin » n'apparaît nulle part dans le dépôt.
-  Le brief d'Adrien désigne le produit comme « Orvadin Coach ».
+- Constat (corrigé le 2026-10-01 après examen des branches distantes) : sur `main` et sur la
+  branche de travail, l'application s'appelle « Coach Volley » (`app.json` : `name`, `slug`,
+  `scheme`, identifiants `com.coachvolley.app`), son design system est intitulé « Coach Volley »
+  (`src/constants/theme.ts`) et « Orvadin » n'apparaît pas dans le code. En revanche, la branche
+  distante non fusionnée `claude/coach-volley-app-051xnb` contient le commit `d66d84d`
+  (2026-09-27) qui renomme le nom affiché en ORVADIN via `APP_NAME` (`src/constants/brand.ts`)
+  en conservant tous les identifiants techniques. Elle n'est ni fusionnée ni en pull request.
+  Le brief d'Adrien désigne le produit comme « Orvadin Coach ». Le statut de ce renommage n'est
+  pas documenté : il n'est pas VALIDÉ.
 - Question : Quel est le nom du produit et de la marque affichés dans l'app, et quand
   l'aligner sur Orvadin ? Quelles parties sont concernées (nom affiché, identifiants de
   bundle, schéma d'URL, design system, textes légaux) ?
 - Nature : structurante (identité, et identifiants de bundle difficiles à changer après publication).
-- Agents à consulter : orvadin-director (coordination), art-director, product-director, cto.
+- Agents à consulter : Orvadin Director (coordination), art-director, product-director, cto.
 - Aucune modification n'est faite tant qu'Adrien n'a pas décidé.
 
 ### Q-002 — Quels fichiers constituent le logo et le wordmark de référence, et quelles règles d'usage ?

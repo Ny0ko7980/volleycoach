@@ -1,7 +1,8 @@
 # Journal des décisions
 
 Fait foi pour les statuts. Règles d'écriture et format : voir `README.md`.
-Les entrées ci-dessous proviennent du brief d'installation d'Adrien (2026-10-01).
+D-001 à D-007 proviennent du brief d'installation d'Adrien (2026-10-01). D-008 date de sa
+décision du même jour, prise après le premier test de fonctionnement des agents.
 Aucune autre décision n'est enregistrée à ce jour.
 
 ---
@@ -81,3 +82,22 @@ Aucune autre décision n'est enregistrée à ce jour.
 - Raison : Cohérence avec l'identité recherchée (D-006).
 - Source : Message d'Adrien, 2026-10-01
 - Réversibilité : réversible, mais touche le positionnement : à traiter comme structurante si remise en cause.
+
+### D-008 — La session principale est l'Orvadin Director
+- Statut : VALIDÉ
+- Date : 2026-10-01
+- Domaine : gouvernance
+- Décision : Le rôle d'Orvadin Director est tenu par la session principale, qui orchestre les
+  trois spécialistes `art-director`, `product-director` et `cto`, conservés tels quels.
+  Circuit : Adrien → Director → spécialistes → synthèse du Director → Adrien. Le Director
+  choisit lui-même les spécialistes à consulter (un, plusieurs ou les trois), récupère leurs
+  rapports, détecte leurs désaccords et présente les décisions structurantes à Adrien. Le
+  sous-agent `orvadin-director` est retiré. Toutes les règles de gouvernance restent en vigueur
+  (statuts VALIDÉ / PROPOSÉ / À DÉCIDER / OBSOLÈTE, D-001 à D-003, droit de remise en question
+  de l'Art Director). Le protocole d'orchestration est dans `CLAUDE.md`.
+- Raison : Dans l'environnement cloud, `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` interdit à un
+  sous-agent d'en appeler d'autres. Un sous-agent Director ne pouvait donc pas déléguer, ce que
+  le test de fonctionnement du 2026-10-01 a constaté (option C retenue parmi A, B et C).
+- Source : Message d'Adrien, 2026-10-01 (« Je retiens l'option C ») ; test de fonctionnement du
+  2026-10-01
+- Réversibilité : réversible (l'ancien sous-agent reste récupérable dans le commit `8775888`).

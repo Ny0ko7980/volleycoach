@@ -8,14 +8,23 @@ Adrien décide (voir D-001 dans `decisions.md`).
 
 ## Fichiers
 
-| Fichier | Contenu | Agent qui propose les mises à jour |
+| Fichier | Contenu | Qui propose les mises à jour |
 |---|---|---|
 | `README.md` | Ce document : statuts, règles d'écriture, gouvernance | — (modifié seulement sur décision d'Adrien) |
-| `decisions.md` | Journal des décisions, tous domaines. **Fait foi pour les statuts.** | orvadin-director |
+| `decisions.md` | Journal des décisions, tous domaines. **Fait foi pour les statuts.** | Orvadin Director (session principale) |
 | `brand.md` | Identité de marque et direction artistique | art-director |
 | `product.md` | Principes et périmètre produit | product-director |
 | `architecture.md` | Architecture technique constatée | cto |
-| `questions-ouvertes.md` | Tout ce qui est À DÉCIDER ou non documenté | orvadin-director |
+| `questions-ouvertes.md` | Tout ce qui est À DÉCIDER ou non documenté | Orvadin Director (session principale) |
+
+## Orchestration : l'Orvadin Director est la session principale
+
+Le rôle d'Orvadin Director est tenu par la **session principale**, pas par un sous-agent
+(décision D-008). Le circuit est : Adrien → Director → spécialistes (`art-director`,
+`product-director`, `cto`) → synthèse du Director → Adrien. Le Director choisit lui-même les
+spécialistes à consulter, récupère leurs rapports, détecte leurs désaccords et présente les
+décisions structurantes à Adrien. Le protocole détaillé est dans `CLAUDE.md`. Le nom
+« orvadin-director » dans les documents désigne ce rôle.
 
 ## Les quatre statuts
 
@@ -32,10 +41,10 @@ approbation explicite d'Adrien fait passer une entrée à VALIDÉ. Un silence, u
 
 ## Qui écrit quoi
 
-- **Les agents (orvadin-director, art-director, product-director, cto) sont en lecture seule.**
+- **Les spécialistes (art-director, product-director, cto) sont en lecture seule.**
   Ils ne modifient jamais ces fichiers. Ils proposent une entrée au format ci-dessous,
   en PROPOSÉ ou À DÉCIDER, dans leur réponse.
-- **La session principale** écrit dans ces fichiers, et uniquement :
+- **La session principale (Orvadin Director)** écrit dans ces fichiers, et uniquement :
   1. après une validation explicite d'Adrien (passage à VALIDÉ, OBSOLÈTE, ou création d'une entrée VALIDÉ) ;
   2. ou pour consigner une proposition (PROPOSÉ / À DÉCIDER) qu'Adrien a demandé d'enregistrer.
 - Chaque entrée cite sa **source** : message d'Adrien (avec date), fichier du dépôt
@@ -128,7 +137,10 @@ Cette règle s'applique quel que soit le contexte de la session.
 |---|---|
 | Nouvelle fonctionnalité | product-director + cto ; art-director si l'expérience ou le visuel change |
 | Refonte d'écran | product-director + art-director + cto |
-| Publicité, contenu social | art-director ; orvadin-director si le positionnement global est touché |
-| Remise en question du slogan, du logo ou de la DA | art-director argumente ; orvadin-director analyse les conséquences si cela dépasse la DA ; Adrien décide |
+| Publicité, contenu social | art-director ; Orvadin Director si le positionnement global est touché |
+| Remise en question du slogan, du logo ou de la DA | art-director argumente ; Orvadin Director analyse les conséquences si cela dépasse la DA ; Adrien décide |
 | Modification de base de données | cto ; product-director si elle résulte d'un changement fonctionnel |
-| Décision touchant plusieurs métiers | orvadin-director coordonne ; Adrien décide |
+| Décision touchant plusieurs métiers | Orvadin Director coordonne ; Adrien décide |
+
+Le Director (session principale) détermine lui-même les spécialistes à consulter : Adrien
+n'a pas à les choisir.
