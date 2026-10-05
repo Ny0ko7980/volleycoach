@@ -4,7 +4,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
 import { View } from "react-native";
+import { useAppFonts } from "@/design/fonts";
 import { useAuthStore } from "@/store/authStore";
 import { useProfileStore } from "@/store/profileStore";
 import { fetchMyProfile } from "@/services/profileService";
@@ -19,6 +21,12 @@ import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { ConfigErrorView } from "@/components/ConfigErrorView";
 import { isSupabaseConfigured, missingSupabaseEnvVars } from "@/lib/supabase";
 import { APP_NAME } from "@/constants/brand";
+
+// L'écran de lancement reste affiché jusqu'à ce que les polices soient
+// prêtes : sinon la première image montre les titres en police système, puis
+// ils sautent vers Archivo. L'appel peut échouer sur certaines plateformes
+// (web, rechargement rapide) : ce n'est jamais une raison de ne pas démarrer.
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function RootNavigationGate() {
   const router = useRouter();
@@ -112,6 +120,18 @@ function RootNavigationGate() {
 
 export default function RootLayout() {
   const { theme } = useAppTheme();
+  // Vrai dès que les polices sont là, qu'elles ont échoué, ou après trois
+  // secondes : dans les trois cas on affiche. Le garde d'authentification
+  // ci-dessous n'est pas monté avant, donc rien ne se joue en coulisses
+  // pendant que l'écran de lancement est visible.
+  const fontsReady = useAppFonts();
+
+  useEffect(() => {
+    if (fontsReady) SplashScreen.hideAsync().catch(() => undefined);
+  }, [fontsReady]);
+
+  if (!fontsReady) return null;
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
       <SafeAreaProvider>
